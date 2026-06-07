@@ -34,7 +34,7 @@
 
 ## Demo
 
-> _Add screenshots or a GIF of the extension in action here._
+![cap](.github/cap.png)
 
 ---
 
