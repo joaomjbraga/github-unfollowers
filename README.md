@@ -1,4 +1,4 @@
-# GitHub Unfollowers — Extensão de Navegador
+# GitHub Unfollowers Extensão de Navegador
 
 Descubra quem você segue no GitHub mas não te segue de volta, e pare de seguir com um clique.
 
