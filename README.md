@@ -2,12 +2,12 @@
 
 # GitHub Unfollowers
 
-**A Chrome extension to identify users you follow who don't follow you back.**
+**Uma extensão para Chrome que identifica usuários que você segue mas não te seguem de volta.**
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Coming%20Soon-lightgrey?style=flat-square&logo=googlechrome)](https://github.com/joaomjbraga/github-unfollowers)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Em%20Breve-lightgrey?style=flat-square&logo=googlechrome)](https://github.com/joaomjbraga/github-unfollowers)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue?style=flat-square&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![GitHub API](https://img.shields.io/badge/GitHub-REST%20API-black?style=flat-square&logo=github)](https://docs.github.com/en/rest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Licença: MIT](https://img.shields.io/badge/Licença-MIT-green?style=flat-square)](LICENSE)
 
 <img src=".github/extesion.png" alt="GitHub Unfollowers" />
 
@@ -15,78 +15,78 @@
 
 ---
 
-**GitHub Unfollowers** uses the official GitHub API to compare your followers and following lists, quickly surfacing accounts that don't follow you back. It's designed to be simple, fast, and browser-native — no third-party servers, no data collection.
+**GitHub Unfollowers** utiliza a API oficial do GitHub para comparar suas listas de seguidores e seguidos, identificando rapidamente contas que não te seguem de volta. Foi projetado para ser simples, rápido e nativo do navegador — sem servidores de terceiros, sem coleta de dados.
 
-> Manage your GitHub network without leaving your browser.
-
----
-
-## Features
-
-- 🔍 Identify users you follow who don't follow you back
-- ⚡ Fast lookup via the GitHub REST API
-- 🔗 Direct links to each user's profile
-- ❌ Unfollow users directly from the extension
-- 💾 Local data persistence with Chrome Storage API
-- 🪶 Lightweight and intuitive interface
+> Gerencie sua rede do GitHub sem sair do navegador.
 
 ---
 
-## Demo
+## Funcionalidades
+
+- 🔍 Identifique usuários que você segue mas não te seguem de volta
+- ⚡ Consulta rápida através da REST API do GitHub
+- 🔗 Links diretos para o perfil de cada usuário
+- ❌ Deixe de seguir usuários diretamente da extensão
+- 💾 Persistência local de dados com a Chrome Storage API
+- 🪶 Interface leve e intuitiva
+
+---
+
+## Demonstração
 
 ![cap](.github/cap.png)
 
 ---
 
-## Installation
+## Instalação
 
 ### Chrome Web Store
 
-> 🚧 Coming soon.
+https://chromewebstore.google.com/detail/github-unfollowers/lhjcplbgbldjcefdnlnjcogincpgdjjc
 
-### Manual Installation
+### Instalação Manual
 
-1. **Clone the repository:**
+1. **Clone o repositório:**
 
 ```bash
 git clone https://github.com/joaomjbraga/github-unfollowers.git
 ```
 
-2. Open Chrome and navigate to:
+2. Abra o Chrome e navegue para:
 
 ```
 chrome://extensions
 ```
 
-3. Enable **Developer Mode** (toggle in the top-right corner).
+3. Ative o **Modo do Desenvolvedor** (alternar no canto superior direito).
 
-4. Click **Load unpacked** and select the project folder.
-
----
-
-## Usage
-
-1. Open the extension from the Chrome toolbar.
-2. Enter your GitHub credentials or personal access token when prompted.
-3. Click **Search**.
-4. Wait for the data to sync.
-5. Review the list of users who don't follow you back.
-6. Unfollow directly from the interface as needed.
+4. Clique em **Carregar sem compactação** e selecione a pasta do projeto.
 
 ---
 
-## Tech Stack
+## Como Usar
 
-| Technology                    | Purpose                 |
-| ----------------------------- | ----------------------- |
-| JavaScript                    | Core extension logic    |
-| Chrome Extensions Manifest V3 | Extension architecture  |
-| GitHub REST API               | Follower/following data |
-| Chrome Storage API            | Local data persistence  |
+1. Abra a extensão na barra de ferramentas do Chrome.
+2. Insira suas credenciais do GitHub ou token de acesso pessoal quando solicitado.
+3. Clique em **Buscar**.
+4. Aguarde a sincronização dos dados.
+5. Revise a lista de usuários que não te seguem de volta.
+6. Deixe de seguir diretamente pela interface conforme necessário.
 
 ---
 
-## Project Structure
+## Tecnologias
+
+| Tecnologia                    | Finalidade                   |
+| ----------------------------- | ---------------------------- |
+| JavaScript                    | Lógica principal da extensão |
+| Chrome Extensions Manifest V3 | Arquitetura da extensão      |
+| GitHub REST API               | Dados de seguidores/seguidos |
+| Chrome Storage API            | Persistência local de dados  |
+
+---
+
+## Estrutura do Projeto
 
 ```
 github-unfollowers/
@@ -102,50 +102,50 @@ github-unfollowers/
 
 ---
 
-## Privacy
+## Privacidade
 
-GitHub Unfollowers does **not** collect, store, or share any personal data.
+O GitHub Unfollowers **não** coleta, armazena ou compartilha nenhum dado pessoal.
 
-All data is fetched directly from the official GitHub API and processed locally in your browser. Nothing leaves your machine.
+Todos os dados são obtidos diretamente da API oficial do GitHub e processados localmente no seu navegador. Nada sai da sua máquina.
 
-📄 [Privacy Policy](https://joaomjbraga.github.io/github-unfollowers/privacy-policy)
-
----
-
-## Contributing
-
-Contributions are welcome! To get started:
-
-1. Fork the repository.
-2. Create a feature branch:
-
-```bash
-git checkout -b feature/my-feature
-```
-
-3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/):
-
-```bash
-git commit -m "feat: add new functionality"
-```
-
-4. Push to your fork:
-
-```bash
-git push origin feature/my-feature
-```
-
-5. Open a **Pull Request** against the `main` branch.
+📄 [Política de Privacidade](https://joaomjbraga.github.io/github-unfollowers/privacy-policy)
 
 ---
 
-## License
+## Contribuindo
 
-Distributed under the [MIT License](LICENSE).
+Contribuições são bem-vindas! Para começar:
+
+1. Faça um fork do repositório.
+2. Crie um branch de funcionalidade:
+
+```bash
+git checkout -b feature/minha-funcionalidade
+```
+
+3. Faça commit das suas alterações usando [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+git commit -m "feat: adicionar nova funcionalidade"
+```
+
+4. Envie para o seu fork:
+
+```bash
+git push origin feature/minha-funcionalidade
+```
+
+5. Abra um **Pull Request** contra o branch `main`.
 
 ---
 
-## Author
+## Licença
+
+Distribuído sob a [Licença MIT](LICENSE).
+
+---
+
+## Autor
 
 **João M. J. Braga**
 
