@@ -69,9 +69,15 @@ body {
   flex: 1;
   min-width: 0;
 }
-.header-brand svg {
+.header-brand svg,
+.header-brand-icon {
   flex-shrink: 0;
   color: var(--text-primary);
+}
+.header-brand-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
 }
 .header-title {
   font-weight: 700;
