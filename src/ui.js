@@ -3,9 +3,6 @@ import { ghFetch } from './api.js';
 import { $ } from './dom.js';
 
 export function updateStats() {
-  $('stat-following').textContent = state.following.length;
-  $('stat-followers').textContent = state.followers.length;
-  $('stat-unfollowers').textContent = state.unfollowers.length;
   $('count-all').textContent = state.unfollowers.length;
   $('count-mutual').textContent = state.mutuals.length;
 }
