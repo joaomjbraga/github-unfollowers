@@ -6,10 +6,8 @@ export function updateStats() {
   $('stat-following').textContent = state.following.length;
   $('stat-followers').textContent = state.followers.length;
   $('stat-unfollowers').textContent = state.unfollowers.length;
-  $('stat-not-following-back').textContent = state.notFollowingBack.length;
   $('count-all').textContent = state.unfollowers.length;
   $('count-mutual').textContent = state.mutuals.length;
-  $('count-not-following-back').textContent = state.notFollowingBack.length;
 }
 
 export function getFilteredList() {
