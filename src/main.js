@@ -57,9 +57,11 @@ async function loadData() {
 
     ui.showLoading('Calculando...');
     const followerSet = new Set(state.followers.map(u => u.login));
+    const followingSet = new Set(state.following.map(u => u.login));
 
     state.unfollowers = state.following.filter(u => !followerSet.has(u.login));
     state.mutuals = state.following.filter(u => followerSet.has(u.login));
+    state.notFollowingBack = state.followers.filter(u => !followingSet.has(u.login));
 
     ui.setProgress(100);
     ui.updateStats();
@@ -96,8 +98,10 @@ document.querySelectorAll('.tab').forEach(tab => {
     searchInput.value = '';
     $('list-label').textContent =
       state.activeTab === 'mutual'
-        ? 'Seguem de volta (mútuos)'
-        : 'Não te seguem de volta';
+        ? 'Seguidores mútuos'
+        : state.activeTab === 'not-following-back'
+          ? 'Quem segue você'
+          : 'Não te seguem de volta';
     ui.renderList();
   });
 });

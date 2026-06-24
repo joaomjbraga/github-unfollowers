@@ -4,6 +4,7 @@ export const state = {
   following: [],
   followers: [],
   unfollowers: [],
+  notFollowingBack: [],
   mutuals: [],
   activeTab: 'all',
   query: '',

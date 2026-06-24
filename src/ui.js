@@ -6,12 +6,18 @@ export function updateStats() {
   $('stat-following').textContent = state.following.length;
   $('stat-followers').textContent = state.followers.length;
   $('stat-unfollowers').textContent = state.unfollowers.length;
+  $('stat-not-following-back').textContent = state.notFollowingBack.length;
   $('count-all').textContent = state.unfollowers.length;
   $('count-mutual').textContent = state.mutuals.length;
+  $('count-not-following-back').textContent = state.notFollowingBack.length;
 }
 
 export function getFilteredList() {
-  const source = state.activeTab === 'mutual' ? state.mutuals : state.unfollowers;
+  let source;
+  if (state.activeTab === 'mutual') source = state.mutuals;
+  else if (state.activeTab === 'not-following-back') source = state.notFollowingBack;
+  else source = state.unfollowers;
+
   if (!state.query) return source;
   const q = state.query.toLowerCase();
   return source.filter(
@@ -22,17 +28,22 @@ export function getFilteredList() {
 export function renderList() {
   const list = getFilteredList();
   const isMutual = state.activeTab === 'mutual';
+  const isNotFollowingBack = state.activeTab === 'not-following-back';
   const userList = $('user-list');
   const btnUnfollowAll = $('btn-unfollow-all');
   const emptyFiltered = $('empty-filtered');
   const allFollowingBack = $('all-following-back');
 
-  btnUnfollowAll.style.display = isMutual ? 'none' : '';
+  btnUnfollowAll.style.display = isNotFollowingBack || isMutual ? 'none' : '';
   allFollowingBack.classList.add('hidden');
   emptyFiltered.classList.add('hidden');
   userList.innerHTML = '';
 
-  if (!isMutual && state.unfollowers.length === 0) {
+  if (isMutual && state.mutuals.length === 0) {
+    allFollowingBack.classList.remove('hidden');
+    return;
+  }
+  if (isNotFollowingBack && state.notFollowingBack.length === 0) {
     allFollowingBack.classList.remove('hidden');
     return;
   }
@@ -58,11 +69,15 @@ export function renderList() {
       </div>
       ${isMutual
         ? `<span class="badge-mutual">Mútuo</span>`
-        : `<button class="btn btn-danger-sm" data-login="${user.login}">Parar de seguir</button>`
+        : isNotFollowingBack
+          ? `<button class="btn btn-primary-sm" data-login="${user.login}">Seguir</button>`
+          : `<button class="btn btn-danger-sm" data-login="${user.login}">Parar de seguir</button>`
       }
     `;
 
-    if (!isMutual) {
+    if (isNotFollowingBack) {
+      item.querySelector('button').addEventListener('click', () => followUser(user.login));
+    } else if (!isMutual) {
       item.querySelector('button').addEventListener('click', () => unfollowUser(user.login));
     }
 
@@ -80,6 +95,7 @@ export async function unfollowUser(login) {
     state.following = state.following.filter(u => u.login !== login);
     state.unfollowers = state.unfollowers.filter(u => u.login !== login);
     state.mutuals = state.mutuals.filter(u => u.login !== login);
+    state.notFollowingBack = state.notFollowingBack.filter(u => u.login !== login);
     updateStats();
     if (item) {
       item.classList.add('unfollowed');
@@ -88,6 +104,26 @@ export async function unfollowUser(login) {
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Parar de seguir'; }
     showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+  }
+}
+
+export async function followUser(login) {
+  const item = $('user-list').querySelector(`[data-login="${login}"]`);
+  const btn = item?.querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  try {
+    await ghFetch(`/user/following/${login}`, 'PUT');
+    state.notFollowingBack = state.notFollowingBack.filter(u => u.login !== login);
+    state.following = [...state.following, { login, avatar_url: `https://github.com/${login}.png`, name: null }];
+    updateStats();
+    if (item) {
+      item.classList.add('unfollowed');
+      setTimeout(() => { renderList(); }, 400);
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Seguir'; }
+    showError(`Erro ao seguir ${login}: ${e.message}`);
   }
 }
 

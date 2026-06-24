@@ -279,6 +279,24 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.btn-primary-sm {
+  background: var(--accent);
+  border-color: rgba(240, 246, 252, 0.1);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-primary-sm:hover {
+  background: var(--accent-hover);
+}
+.btn-primary-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Main screen ── */
 #screen-main {
