@@ -33,7 +33,6 @@
 
 body {
   width: 100%;
-  max-width: 400px;
   min-width: 0;
   min-height: 500px;
   background: var(--bg-canvas);
