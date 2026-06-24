@@ -40,6 +40,11 @@ export function renderList() {
     allFollowingBack.classList.remove('hidden');
     return;
   }
+  if (!isMutual && !isNotFollowingBack && state.unfollowers.length === 0) {
+    $('all-following-back-msg').innerHTML = '<strong>Tudo certo!</strong> Todos que você segue te seguem de volta.';
+    allFollowingBack.classList.remove('hidden');
+    return;
+  }
   if (isNotFollowingBack && state.notFollowingBack.length === 0) {
     $('all-following-back-msg').innerHTML = '<strong>Todos que te seguem, você já segue de volta.</strong>';
     allFollowingBack.classList.remove('hidden');
@@ -115,8 +120,11 @@ export async function followUser(login) {
 
   try {
     await ghFetch(`/user/following/${login}`, 'PUT');
+    const followUserData = state.notFollowingBack.find(u => u.login === login);
     state.notFollowingBack = state.notFollowingBack.filter(u => u.login !== login);
-    state.following = [...state.following, { login, avatar_url: `https://github.com/${login}.png`, name: null }];
+    if (followUserData) {
+      state.following = [...state.following, followUserData];
+    }
     updateStats();
     if (item) {
       item.classList.add('unfollowed');

@@ -145,6 +145,11 @@ searchInput.addEventListener('input', e => {
 
 $('btn-refresh').addEventListener('click', async () => {
   state.user = null;
+  state.activeTab = 'all';
+  searchInput.value = '';
+  $('list-label').textContent = 'Não te seguem de volta';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-all').classList.add('active');
   await loadData();
 });
 
