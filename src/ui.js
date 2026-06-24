@@ -36,10 +36,12 @@ export function renderList() {
   userList.innerHTML = '';
 
   if (isMutual && state.mutuals.length === 0) {
+    $('all-following-back-msg').innerHTML = '<strong>Nenhum seguidor mútuo.</strong>';
     allFollowingBack.classList.remove('hidden');
     return;
   }
   if (isNotFollowingBack && state.notFollowingBack.length === 0) {
+    $('all-following-back-msg').innerHTML = '<strong>Todos que te seguem, você já segue de volta.</strong>';
     allFollowingBack.classList.remove('hidden');
     return;
   }

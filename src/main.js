@@ -123,6 +123,7 @@ $('btn-logout').addEventListener('click', async () => {
   state.following = [];
   state.followers = [];
   state.unfollowers = [];
+  state.notFollowingBack = [];
   state.mutuals = [];
   state.activeTab = 'all';
   state.query = '';
