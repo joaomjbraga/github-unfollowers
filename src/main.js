@@ -7,6 +7,36 @@ const tokenInput = $('token-input');
 const btnConnect = $('btn-connect');
 const searchInput = $('search-input');
 const btnUnfollowAll = $('btn-unfollow-all');
+const modalOverlay = $('modal-overlay');
+const modalCount = $('modal-count');
+const modalConfirm = $('modal-confirm');
+const modalCancel = $('modal-cancel');
+
+function showModal(count) {
+  return new Promise(resolve => {
+    modalCount.textContent = count;
+    modalOverlay.classList.remove('hidden');
+    modalConfirm.disabled = false;
+    modalCancel.disabled = false;
+
+    const onConfirm = async () => {
+      cleanup();
+      resolve(true);
+    };
+    const onCancel = async () => {
+      cleanup();
+      resolve(false);
+    };
+    const cleanup = () => {
+      modalConfirm.removeEventListener('click', onConfirm);
+      modalCancel.removeEventListener('click', onCancel);
+      modalOverlay.classList.add('hidden');
+    };
+
+    modalConfirm.addEventListener('click', onConfirm);
+    modalCancel.addEventListener('click', onCancel);
+  });
+}
 
 btnConnect.addEventListener('click', async () => {
   const token = tokenInput.value.trim();
@@ -75,7 +105,9 @@ async function loadData() {
 btnUnfollowAll.addEventListener('click', async () => {
   const toUnfollow = [...state.unfollowers];
   if (toUnfollow.length === 0) return;
-  if (!confirm(`Parar de seguir ${toUnfollow.length} usuário(s)?`)) return;
+
+  const confirmed = await showModal(toUnfollow.length);
+  if (!confirmed) return;
 
   btnUnfollowAll.disabled = true;
   btnUnfollowAll.textContent = 'Processando...';
