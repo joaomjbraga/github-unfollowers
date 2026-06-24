@@ -5,6 +5,7 @@ import { $ } from './dom.js';
 export function updateStats() {
   $('count-all').textContent = state.unfollowers.length;
   $('count-mutual').textContent = state.mutuals.length;
+  $('count-not-following-back').textContent = state.notFollowingBack.length;
 }
 
 export function getFilteredList() {
