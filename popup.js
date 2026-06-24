@@ -124,9 +124,9 @@ async function loadData() {
       state.user = await ghFetch('/user');
     }
     const login = state.user.login;
-    $('header-user').textContent = `@${login}`;
-    $('footer-login').textContent = `@${login}`;
-    $('footer-avatar').src = state.user.avatar_url;
+    $('header-user').href = `https://github.com/${login}`;
+    $('header-login').textContent = `@${login}`;
+    $('header-avatar').src = state.user.avatar_url;
 
     setProgress(15);
     showLoading('Carregando lista de seguindo...');
