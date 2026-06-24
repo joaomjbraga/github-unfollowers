@@ -24,11 +24,14 @@
 ## Funcionalidades
 
 - 🔍 Identifique usuários que você segue mas não te seguem de volta
+- 👥 Veja quem te segue mas você não segue de volta (follow back)
+- 🤝 Visualize seguidores mútuos
 - ⚡ Consulta rápida através da REST API do GitHub
 - 🔗 Links diretos para o perfil de cada usuário
-- ❌ Deixe de seguir usuários diretamente da extensão
+- ❌ Deixe de seguir / ✅ Siga diretamente pela extensão
+- 🔔 Modal de confirmação para ação em massa
 - 💾 Persistência local de dados com a Chrome Storage API
-- 🪶 Interface leve e intuitiva
+- 🪶 Interface leve e intuitiva com tema dark
 
 ---
 
@@ -67,11 +70,14 @@ chrome://extensions
 ## Como Usar
 
 1. Abra a extensão na barra de ferramentas do Chrome.
-2. Insira suas credenciais do GitHub ou token de acesso pessoal quando solicitado.
-3. Clique em **Buscar**.
-4. Aguarde a sincronização dos dados.
-5. Revise a lista de usuários que não te seguem de volta.
-6. Deixe de seguir diretamente pela interface conforme necessário.
+2. Insira seu Personal Access Token do GitHub (escopo `read:user` e `user:follow`).
+3. Clique em **Conectar**.
+4. Navegue pelas abas:
+   - **Não Seguidores** — você segue, mas não te seguem de volta
+   - **Mútuos** — seguidores que também você segue
+   - **Não sigo** — te seguem, mas você não segue de volta (siga de volta com um clique)
+5. Use o campo de busca para filtrar por username.
+6. Deixe de seguir ou siga diretamente pela interface conforme necessário.
 
 ---
 
@@ -79,7 +85,7 @@ chrome://extensions
 
 | Tecnologia                    | Finalidade                   |
 | ----------------------------- | ---------------------------- |
-| JavaScript                    | Lógica principal da extensão |
+| JavaScript (ES Modules)       | Lógica principal da extensão |
 | Chrome Extensions Manifest V3 | Arquitetura da extensão      |
 | GitHub REST API               | Dados de seguidores/seguidos |
 | Chrome Storage API            | Persistência local de dados  |
@@ -90,13 +96,19 @@ chrome://extensions
 
 ```
 github-unfollowers/
+├── popup.html              Interface HTML
+├── popup.css               Estilos e tema dark
+├── manifest.json           Configuração da extensão
+├── src/
+│   ├── main.js             Bootstrap, eventos e fluxos
+│   ├── store.js            Estado global compartilhado
+│   ├── api.js              GitHub API + chrome.storage
+│   ├── ui.js               Renderização, stats, ações follow/unfollow
+│   └── dom.js              Helpers $() e $$()
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
-├── popup.html
-├── popup.js
-├── manifest.json
 └── README.md
 ```
 
