@@ -91,7 +91,10 @@ export async function unfollowUser(login) {
     state.following = state.following.filter(u => u.login !== login);
     state.unfollowers = state.unfollowers.filter(u => u.login !== login);
     state.mutuals = state.mutuals.filter(u => u.login !== login);
-    state.notFollowingBack = state.notFollowingBack.filter(u => u.login !== login);
+    if (state.followers.some(u => u.login === login)) {
+      const user = state.followers.find(u => u.login === login);
+      state.notFollowingBack = [...state.notFollowingBack, user];
+    }
     updateStats();
     if (item) {
       item.classList.add('unfollowed');
