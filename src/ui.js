@@ -30,7 +30,7 @@ export function renderList() {
   const emptyFiltered = $('empty-filtered');
   const allFollowingBack = $('all-following-back');
 
-  btnUnfollowAll.style.display = isNotFollowingBack || isMutual ? 'none' : '';
+  btnUnfollowAll.style.display = isNotFollowingBack || isMutual || state.unfollowers.length === 0 ? 'none' : '';
   allFollowingBack.classList.add('hidden');
   emptyFiltered.classList.add('hidden');
   userList.innerHTML = '';
