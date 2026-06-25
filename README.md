@@ -2,6 +2,8 @@
 
 # GitHub Unfollowers
 
+**Versão 1.2.1**
+
 **Uma extensão para Chrome que identifica usuários que você segue mas não te seguem de volta.**
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Em%20Breve-lightgrey?style=flat-square&logo=googlechrome)](https://github.com/joaomjbraga/github-unfollowers)

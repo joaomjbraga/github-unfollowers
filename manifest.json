@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Unfollowers",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Veja quem não te segue de volta no GitHub e pare de seguir com um clique.",
   "author": "João M J Braga",
   "permissions": ["storage"],

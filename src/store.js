@@ -6,6 +6,18 @@ export const state = {
   unfollowers: [],
   notFollowingBack: [],
   mutuals: [],
-  activeTab: 'all',
-  query: '',
+  activeTab: "all",
+  query: "",
 };
+
+export function resetState() {
+  state.token = null;
+  state.user = null;
+  state.following = [];
+  state.followers = [];
+  state.unfollowers = [];
+  state.notFollowingBack = [];
+  state.mutuals = [];
+  state.activeTab = "all";
+  state.query = "";
+}

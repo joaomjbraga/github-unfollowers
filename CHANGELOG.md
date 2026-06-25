@@ -6,6 +6,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.2.1] - 2026-06-25
+
+### Alterado
+- **Separação de responsabilidades** — `src/ui.js` agora é responsável apenas pela renderização da interface, enquanto `src/app.js` gerencia a lógica de follow/unfollow.
+- **Melhoria de estabilidade** — ações de seguir/deixar de seguir atualizam corretamente o estado e a renderização nos diferentes estados da UI.
+- **Renderização mais limpa** — injeção de handlers externos na lista de usuários reduz o acoplamento entre apresentação e lógica.
+
+### Corrigido
+- **Consistência de ação** — botões de seguir e deixar de seguir respondem corretamente após pesquisa e troca de abas.
+- **Separação de camada** — removida lógica de API de `src/ui.js`, tornando a interface apenas um layer de visualização.
+
+---
+
 ## [1.2.0] - 2026-06-24
 
 ### Adicionado
