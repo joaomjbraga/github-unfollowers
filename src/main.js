@@ -53,7 +53,11 @@ btnConnect.addEventListener('click', async () => {
     await loadData();
   } catch (e) {
     state.token = null;
-    ui.showConnectError(`Token inválido ou sem permissões: ${e.message}`);
+    if (e.isAuthError) {
+      ui.showToken();
+    } else {
+      ui.showConnectError(`Token inválido ou sem permissões: ${e.message}`);
+    }
   } finally {
     btnConnect.disabled = false;
     btnConnect.innerHTML = `
@@ -98,7 +102,11 @@ async function loadData() {
     ui.renderList();
     ui.showResults();
   } catch (e) {
-    ui.showError(e.message);
+    if (e.isAuthError) {
+      ui.showToken();
+    } else {
+      ui.showError(e.message);
+    }
   }
 }
 
@@ -114,7 +122,10 @@ btnUnfollowAll.addEventListener('click', async () => {
 
   for (const user of toUnfollow) {
     await ui.unfollowUser(user.login).catch(() => {});
-    await ui.sleep(300);
+    const delay = Math.max(api.getRateLimitDelay(), 200);
+    if (delay > 0) {
+      await ui.sleep(delay);
+    }
   }
 
   btnUnfollowAll.disabled = false;
@@ -144,6 +155,7 @@ searchInput.addEventListener('input', e => {
 });
 
 $('btn-refresh').addEventListener('click', async () => {
+  api.clearCache();
   state.user = null;
   state.activeTab = 'all';
   searchInput.value = '';
@@ -155,6 +167,7 @@ $('btn-refresh').addEventListener('click', async () => {
 
 $('btn-logout').addEventListener('click', async () => {
   await api.removeStorage('gh_token');
+  api.clearCache();
   state.token = null;
   state.user = null;
   state.following = [];
@@ -172,8 +185,18 @@ async function init() {
   const stored = await api.getStorage('gh_token');
   if (stored) {
     state.token = stored;
-    ui.showMain();
-    await loadData();
+    try {
+      state.user = await api.ghFetch('/user');
+      ui.showMain();
+      await loadData();
+    } catch (e) {
+      state.token = null;
+      if (e.isAuthError) {
+        ui.showToken();
+      } else {
+        ui.showError(e.message);
+      }
+    }
   } else {
     ui.showToken();
   }

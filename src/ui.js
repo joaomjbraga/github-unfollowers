@@ -63,18 +63,18 @@ export function renderList() {
     item.style.animationDelay = `${Math.min(i * 20, 200)}ms`;
 
     item.innerHTML = `
-      <img class="avatar" src="${user.avatar_url}&s=64" alt="${user.login}" loading="lazy" />
+      <img class="avatar" src="${user.avatar_url}&s=64" alt="${escHtml(user.login)}" loading="lazy" />
       <div class="user-info">
-        <a class="user-login" href="https://github.com/${user.login}" target="_blank">
-          ${user.login}
+        <a class="user-login" href="https://github.com/${escHtml(user.login)}" target="_blank">
+          ${escHtml(user.login)}
         </a>
         ${user.name ? `<div class="user-name">${escHtml(user.name)}</div>` : ''}
       </div>
       ${isMutual
         ? `<span class="badge-mutual">Mútuo</span>`
         : isNotFollowingBack
-          ? `<button class="btn btn-primary-sm" data-login="${user.login}">Seguir</button>`
-          : `<button class="btn btn-danger-sm" data-login="${user.login}">Parar de seguir</button>`
+          ? `<button class="btn btn-primary-sm" data-login="${escHtml(user.login)}">Seguir</button>`
+          : `<button class="btn btn-danger-sm" data-login="${escHtml(user.login)}">Parar de seguir</button>`
       }
     `;
 
@@ -175,7 +175,12 @@ export function showConnectError(msg) {
 }
 
 export function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
