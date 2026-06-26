@@ -21,6 +21,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 - **Performance na lista** — follow/unfollow agora usam manipulação direta do DOM (DOM surgery) ao invés de reconstruir a lista inteira, tornando a ação instantânea.
 - **Debounce na busca** — input de pesquisa agora aguarda 200ms de pausa antes de renderizar, evitando re-renders desnecessários durante a digitação.
 - **Ordenação da lista** — seletor no toolbar permite ordenar por mais/menos seguidores e A-Z.
+- **Fluxo de login simplificado** — guia visual de 3 passos com botão "Criar token no GitHub" que abre a página de token com escopos pré-selecionados.
 
 ---
 

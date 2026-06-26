@@ -6,6 +6,7 @@ import { computeRelationshipLists } from "./utils.js";
 
 const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
+const btnCreateToken = $("btn-create-token");
 const searchInput = $("search-input");
 const sortSelect = $("sort-select");
 const btnUnfollowAll = $("btn-unfollow-all");
@@ -335,6 +336,12 @@ async function followUser(login) {
 }
 function bindEventListeners() {
   btnConnect.addEventListener("click", handleConnect);
+  btnCreateToken.addEventListener("click", () => {
+    window.open(
+      "https://github.com/settings/tokens/new?description=GitHub+Unfollowers&scopes=read:user,user:follow",
+      "_blank",
+    );
+  });
   btnUnfollowAll.addEventListener("click", handleUnfollowAll);
   btnFollowAll.addEventListener("click", handleFollowAll);
   document

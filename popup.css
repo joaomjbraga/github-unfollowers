@@ -174,26 +174,81 @@ body {
   color: var(--text-muted);
 }
 
-.token-hint {
-  font-size: 11px;
-  color: var(--text-secondary);
+.token-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   background: var(--bg-overlay);
   border: 1px solid var(--border-muted);
   border-radius: var(--radius);
-  padding: 10px 12px;
-  margin-top: 12px;
-  line-height: 1.6;
+  padding: 14px 14px;
+  margin-top: 14px;
 }
-.token-hint a {
-  color: var(--blue-light);
-  text-decoration: none;
+.token-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
 }
-.token-hint code {
+.token-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.token-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.token-step-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.token-step-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.token-step-desc code {
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   background: var(--bg-inset);
   padding: 1px 4px;
   border-radius: 3px;
+}
+
+.btn-token-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+  align-self: flex-start;
+}
+.btn-token-create:hover {
+  background: var(--blue-light);
+}
+.btn-token-create:active {
+  transform: scale(0.97);
 }
 
 /* ── Buttons ── */
