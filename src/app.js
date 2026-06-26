@@ -110,9 +110,10 @@ async function handleConnect() {
   } catch (e) {
     state.token = null;
     if (e.isAuthError) {
+      ui.showConnectError("Token inválido ou expirado. Gere um novo token.");
       ui.showToken();
     } else {
-      ui.showConnectError(`Token inválido ou sem permissões: ${e.message}`);
+      ui.showConnectError(`Erro: ${e.message}`);
     }
   } finally {
     btnConnect.disabled = false;
@@ -169,6 +170,7 @@ async function refreshUserData() {
     scheduleAutoRefresh();
   } catch (e) {
     if (e.isAuthError) {
+      ui.showConnectError("Sessão expirada. Seu token foi removido. Faça login novamente.");
       ui.showToken();
     } else {
       ui.showError(e.message);
@@ -365,6 +367,7 @@ async function init() {
     } catch (e) {
       state.token = null;
       if (e.isAuthError) {
+        ui.showConnectError("Token salvo expirou ou foi revogado. Gere um novo.");
         ui.showToken();
       } else {
         ui.showError(e.message);
