@@ -337,6 +337,11 @@ body {
   font-weight: 600;
   color: var(--text-secondary);
 }
+.list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .unfollow-all-btn {
   font-size: 11px;
   color: var(--danger-hover);
@@ -351,6 +356,21 @@ body {
 }
 .unfollow-all-btn:hover {
   background: var(--danger-muted);
+}
+.follow-all-btn {
+  font-size: 11px;
+  color: var(--accent-emphasis);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.follow-all-btn:hover {
+  background: rgba(63, 185, 80, 0.1);
 }
 
 .user-list {
@@ -421,12 +441,29 @@ body {
   color: var(--blue-light);
   text-decoration: underline;
 }
+.user-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .user-name {
   font-size: 11px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.badge-new {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent-emphasis);
+  background: rgba(63, 185, 80, 0.12);
+  padding: 1px 5px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .badge-mutual {

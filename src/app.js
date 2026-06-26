@@ -8,13 +8,17 @@ const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
 const searchInput = $("search-input");
 const btnUnfollowAll = $("btn-unfollow-all");
+const btnFollowAll = $("btn-follow-all");
 const modalOverlay = $("modal-overlay");
 const modalCount = $("modal-count");
 const modalConfirm = $("modal-confirm");
 const modalCancel = $("modal-cancel");
+const modalTitle = $("modal-title");
+const modalText = $("modal-text");
 
 const AUTO_REFRESH_INTERVAL = 60000;
 let refreshTimer = null;
+let searchTimeout = null;
 
 function clearAutoRefresh() {
   if (refreshTimer !== null) {
@@ -50,9 +54,14 @@ function resetViewState() {
   $("tab-all").classList.add("active");
 }
 
-function showModal(count) {
+function showModal({ count, isFollow }) {
   return new Promise((resolve) => {
     modalCount.textContent = count;
+    modalTitle.textContent = isFollow ? "Seguir de volta?" : "Deixar de seguir?";
+    modalText.innerHTML = isFollow
+      ? `Você está prestes a seguir <strong>${count}</strong> usuário(s) que te seguem.`
+      : `Você está prestes a deixar de seguir <strong>${count}</strong> usuário(s) que não te seguem de volta. Esta ação não pode ser desfeita.`;
+    modalConfirm.textContent = isFollow ? "Sim, seguir" : "Sim, deixar de seguir";
     modalOverlay.classList.remove("hidden");
     modalConfirm.disabled = false;
     modalCancel.disabled = false;
@@ -132,6 +141,7 @@ async function refreshUserData() {
     ui.setProgress(90);
 
     ui.showLoading("Calculando...");
+    const prevSnap = (await api.getStorage("unfollowers_snapshot")) || [];
     Object.assign(
       state,
       computeRelationshipLists({
@@ -140,9 +150,17 @@ async function refreshUserData() {
       }),
     );
 
+    state.newUnfollowers = state.unfollowers.filter(
+      (u) => !prevSnap.includes(u.login),
+    );
+    await api.setStorage(
+      "unfollowers_snapshot",
+      state.unfollowers.map((u) => u.login),
+    );
+
     ui.setProgress(100);
     ui.updateStats(state);
-    ui.renderList(state, { followUser, unfollowUser });
+    ui.renderList(state, { followUser, unfollowUser }, state.newUnfollowers);
     ui.showResults();
     scheduleAutoRefresh();
   } catch (e) {
@@ -159,7 +177,7 @@ async function handleUnfollowAll() {
   const toUnfollow = [...state.unfollowers];
   if (toUnfollow.length === 0) return;
 
-  const confirmed = await showModal(toUnfollow.length);
+  const confirmed = await showModal({ count: toUnfollow.length, isFollow: false });
   if (!confirmed) return;
 
   btnUnfollowAll.disabled = true;
@@ -177,6 +195,28 @@ async function handleUnfollowAll() {
   btnUnfollowAll.textContent = "Parar de seguir todos";
 }
 
+async function handleFollowAll() {
+  const toFollow = [...state.notFollowingBack];
+  if (toFollow.length === 0) return;
+
+  const confirmed = await showModal({ count: toFollow.length, isFollow: true });
+  if (!confirmed) return;
+
+  btnFollowAll.disabled = true;
+  btnFollowAll.textContent = "Processando...";
+
+  for (const user of toFollow) {
+    await followUser(user.login).catch(() => {});
+    const delay = Math.max(api.getRateLimitDelay(), 200);
+    if (delay > 0) {
+      await ui.sleep(delay);
+    }
+  }
+
+  btnFollowAll.disabled = false;
+  btnFollowAll.textContent = "Seguir todos";
+}
+
 function handleTabClick(event) {
   const tab = event.currentTarget;
   document
@@ -192,12 +232,16 @@ function handleTabClick(event) {
       : state.activeTab === "not-following-back"
         ? "Quem segue você"
         : "Não te seguem de volta";
-  ui.renderList(state, { followUser, unfollowUser });
+  ui.renderList(state, { followUser, unfollowUser }, state.newUnfollowers);
 }
 
 function handleSearchInput(event) {
-  state.query = event.target.value.trim();
-  ui.renderList(state, { followUser, unfollowUser });
+  const value = event.target.value.trim();
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    state.query = value;
+    ui.renderList(state, { followUser, unfollowUser }, state.newUnfollowers);
+  }, 200);
 }
 
 async function handleRefresh() {
@@ -236,8 +280,10 @@ async function unfollowUser(login) {
       }
     }
 
+    ui.removeUserItem(login);
     ui.updateStats(state);
-    ui.renderList(state, { followUser, unfollowUser });
+    ui.refreshEmptyState(state);
+    ui.refreshUnfollowAllBtn(state);
   } catch (e) {
     if (button) {
       button.disabled = false;
@@ -268,8 +314,9 @@ async function followUser(login) {
       state.mutuals = [...state.mutuals, followUserData];
     }
 
+    ui.removeUserItem(login);
     ui.updateStats(state);
-    ui.renderList(state, { followUser, unfollowUser });
+    ui.refreshEmptyState(state);
   } catch (e) {
     if (button) {
       button.disabled = false;
@@ -281,6 +328,7 @@ async function followUser(login) {
 function bindEventListeners() {
   btnConnect.addEventListener("click", handleConnect);
   btnUnfollowAll.addEventListener("click", handleUnfollowAll);
+  btnFollowAll.addEventListener("click", handleFollowAll);
   document
     .querySelectorAll(".tab")
     .forEach((tab) => tab.addEventListener("click", handleTabClick));

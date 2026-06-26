@@ -11,10 +11,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 ### Adicionado
 
 - **Contador de seguidores no header** — exibe o número de seguidores do perfil ao lado do login, com formatação localizada (pt-BR).
+- **Comparativo histórico** — novos não-seguidores desde a última verificação são marcados com um badge "Novo" na lista.
+- **Follow back em massa** — botão "Seguir todos" na aba "Não sigo" para seguir de volta todos de uma vez, com modal de confirmação e rate-limit awareness.
+- **Badge "Novo"** — indicador visual para não-seguidores detectados pela primeira vez.
 
 ### Alterado
 
 - **Header compacto de linha única** — unificou perfil, contador e ações em uma única linha (~40px), liberando ~38px verticais para a lista de usuários.
+- **Performance na lista** — follow/unfollow agora usam manipulação direta do DOM (DOM surgery) ao invés de reconstruir a lista inteira, tornando a ação instantânea.
+- **Debounce na busca** — input de pesquisa agora aguarda 200ms de pausa antes de renderizar, evitando re-renders desnecessários durante a digitação.
 
 ---
 

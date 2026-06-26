@@ -29,7 +29,7 @@ export function getFilteredList({
   );
 }
 
-export function renderList(state, actions = {}) {
+export function renderList(state, actions = {}, newLogins = []) {
   const list = getFilteredList(state);
   const isMutual = state.activeTab === "mutual";
   const isNotFollowingBack = state.activeTab === "not-following-back";
@@ -42,6 +42,10 @@ export function renderList(state, actions = {}) {
     isNotFollowingBack || isMutual || state.unfollowers.length === 0
       ? "none"
       : "";
+  $("btn-follow-all").classList.toggle(
+    "hidden",
+    !isNotFollowingBack || state.notFollowingBack.length === 0,
+  );
   allFollowingBack.classList.add("hidden");
   emptyFiltered.classList.add("hidden");
   userList.innerHTML = "";
@@ -70,11 +74,14 @@ export function renderList(state, actions = {}) {
     return;
   }
 
+  const newSet = new Set(newLogins);
   list.forEach((user, i) => {
     const item = document.createElement("div");
     item.className = "user-item";
     item.dataset.login = user.login;
     item.style.animationDelay = `${Math.min(i * 20, 200)}ms`;
+
+    const isNew = !isMutual && !isNotFollowingBack && newSet.has(user.login);
 
     item.innerHTML = `
       <img class="avatar" src="${user.avatar_url}&s=64" alt="${escHtml(user.login)}" loading="lazy" />
@@ -82,7 +89,10 @@ export function renderList(state, actions = {}) {
         <a class="user-login" href="https://github.com/${escHtml(user.login)}" target="_blank">
           ${escHtml(user.login)}
         </a>
-        ${user.name ? `<div class="user-name">${escHtml(user.name)}</div>` : ""}
+        <div class="user-meta">
+          ${user.name ? `<span class="user-name">${escHtml(user.name)}</span>` : ""}
+          ${isNew ? `<span class="badge-new">Novo</span>` : ""}
+        </div>
       </div>
       ${
         isMutual
@@ -153,6 +163,61 @@ export function escHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+export function removeUserItem(login) {
+  const item = document.querySelector(`[data-login="${login}"]`);
+  if (item) item.remove();
+}
+
+export function refreshEmptyState(state) {
+  const userList = $("user-list");
+  const emptyFiltered = $("empty-filtered");
+  const allFollowingBack = $("all-following-back");
+
+  allFollowingBack.classList.add("hidden");
+  emptyFiltered.classList.add("hidden");
+
+  if (userList.children.length > 0) return;
+
+  const isMutual = state.activeTab === "mutual";
+  const isNotFollowingBack = state.activeTab === "not-following-back";
+
+  if (isMutual && state.mutuals.length === 0) {
+    $("all-following-back-msg").innerHTML =
+      "<strong>Nenhum seguidor mútuo.</strong>";
+    allFollowingBack.classList.remove("hidden");
+    return;
+  }
+  if (!isMutual && !isNotFollowingBack && state.unfollowers.length === 0) {
+    $("all-following-back-msg").innerHTML =
+      "<strong>Tudo certo!</strong> Todos que você segue te seguem de volta.";
+    allFollowingBack.classList.remove("hidden");
+    return;
+  }
+  if (isNotFollowingBack && state.notFollowingBack.length === 0) {
+    $("all-following-back-msg").innerHTML =
+      "<strong>Todos que te seguem, você já segue de volta.</strong>";
+    allFollowingBack.classList.remove("hidden");
+    refreshFollowAllBtn(state);
+    return;
+  }
+
+  emptyFiltered.classList.remove("hidden");
+}
+
+export function refreshUnfollowAllBtn(state) {
+  const btn = $("btn-unfollow-all");
+  btn.style.display =
+    state.activeTab !== "all" || state.unfollowers.length === 0 ? "none" : "";
+}
+
+export function refreshFollowAllBtn(state) {
+  const btn = $("btn-follow-all");
+  btn.classList.toggle(
+    "hidden",
+    state.activeTab !== "not-following-back" || state.notFollowingBack.length === 0,
+  );
 }
 
 export function sleep(ms) {
