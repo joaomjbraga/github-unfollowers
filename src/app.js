@@ -7,6 +7,7 @@ import { computeRelationshipLists } from "./utils.js";
 const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
 const searchInput = $("search-input");
+const sortSelect = $("sort-select");
 const btnUnfollowAll = $("btn-unfollow-all");
 const btnFollowAll = $("btn-follow-all");
 const modalOverlay = $("modal-overlay");
@@ -46,7 +47,9 @@ function setUserHeader(user) {
 function resetViewState() {
   state.activeTab = "all";
   state.query = "";
+  state.sortBy = "default";
   searchInput.value = "";
+  sortSelect.value = "default";
   $("list-label").textContent = "Não te seguem de volta";
   document
     .querySelectorAll(".tab")
@@ -235,6 +238,11 @@ function handleTabClick(event) {
   ui.renderList(state, { followUser, unfollowUser }, state.newUnfollowers);
 }
 
+function handleSortChange(event) {
+  state.sortBy = event.target.value;
+  ui.renderList(state, { followUser, unfollowUser }, state.newUnfollowers);
+}
+
 function handleSearchInput(event) {
   const value = event.target.value.trim();
   clearTimeout(searchTimeout);
@@ -333,6 +341,7 @@ function bindEventListeners() {
     .querySelectorAll(".tab")
     .forEach((tab) => tab.addEventListener("click", handleTabClick));
   searchInput.addEventListener("input", handleSearchInput);
+  sortSelect.addEventListener("change", handleSortChange);
   $("btn-refresh").addEventListener("click", handleRefresh);
   $("btn-logout").addEventListener("click", handleLogout);
 }

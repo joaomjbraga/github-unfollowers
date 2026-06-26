@@ -9,24 +9,40 @@ export function updateStats(state) {
 export function getFilteredList({
   activeTab,
   query,
+  sortBy,
   unfollowers,
   mutuals,
   notFollowingBack,
 }) {
-  const source =
+  let source =
     activeTab === "mutual"
       ? mutuals
       : activeTab === "not-following-back"
         ? notFollowingBack
         : unfollowers;
 
-  if (!query) return source;
-  const lowerQuery = query.toLowerCase();
-  return source.filter(
-    (user) =>
-      user.login.toLowerCase().includes(lowerQuery) ||
-      (user.name && user.name.toLowerCase().includes(lowerQuery)),
-  );
+  if (query) {
+    const lowerQuery = query.toLowerCase();
+    source = source.filter(
+      (user) =>
+        user.login.toLowerCase().includes(lowerQuery) ||
+        (user.name && user.name.toLowerCase().includes(lowerQuery)),
+    );
+  }
+
+  if (sortBy && sortBy !== "default") {
+    const sorted = [...source];
+    if (sortBy === "followers_desc") {
+      sorted.sort((a, b) => (b.followers || 0) - (a.followers || 0));
+    } else if (sortBy === "followers_asc") {
+      sorted.sort((a, b) => (a.followers || 0) - (b.followers || 0));
+    } else if (sortBy === "alpha") {
+      sorted.sort((a, b) => a.login.localeCompare(b.login));
+    }
+    return sorted;
+  }
+
+  return source;
 }
 
 export function renderList(state, actions = {}, newLogins = []) {

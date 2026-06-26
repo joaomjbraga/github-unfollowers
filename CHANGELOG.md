@@ -20,6 +20,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 - **Header compacto de linha única** — unificou perfil, contador e ações em uma única linha (~40px), liberando ~38px verticais para a lista de usuários.
 - **Performance na lista** — follow/unfollow agora usam manipulação direta do DOM (DOM surgery) ao invés de reconstruir a lista inteira, tornando a ação instantânea.
 - **Debounce na busca** — input de pesquisa agora aguarda 200ms de pausa antes de renderizar, evitando re-renders desnecessários durante a digitação.
+- **Ordenação da lista** — seletor no toolbar permite ordenar por mais/menos seguidores e A-Z.
 
 ---
 

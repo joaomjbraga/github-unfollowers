@@ -292,8 +292,8 @@ body {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-overlay);
 }
@@ -324,6 +324,29 @@ body {
 .search-input:focus {
   border-color: var(--blue-light);
   box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
+}
+
+.sort-select {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 6px 8px;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  max-width: 110px;
+  transition: border-color 0.15s;
+  appearance: auto;
+}
+.sort-select:focus {
+  border-color: var(--blue-light);
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
+}
+.sort-select:hover {
+  color: var(--text-primary);
 }
 
 .list-header {
