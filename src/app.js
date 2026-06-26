@@ -34,8 +34,9 @@ function scheduleAutoRefresh() {
 
 function setUserHeader(user) {
   $("header-user").href = `https://github.com/${user.login}`;
-  $("header-login").textContent = `@${user.login}`;
+  $("header-login").textContent = user.login;
   $("header-avatar").src = user.avatar_url;
+  $("header-followers").textContent = user.followers.toLocaleString("pt-BR");
 }
 
 function resetViewState() {

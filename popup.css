@@ -51,95 +51,70 @@ body {
 /* ── Header ── */
 .header {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-overlay);
-}
-.header-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.header-brand {
-  display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  min-width: 0;
-}
-.header-brand svg,
-.header-brand-icon {
-  flex-shrink: 0;
-  color: var(--text-primary);
-}
-.header-brand-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-}
-.header-title {
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.header-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.btn-ghost-danger:hover {
-  background: var(--danger-muted);
-  border-color: var(--danger);
-  color: var(--danger-hover);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-overlay);
 }
 
 .header-profile {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
   text-decoration: none;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  transition: background 0.15s;
 }
 .header-profile:hover {
-  border-color: var(--blue-light);
   background: var(--bg-canvas);
 }
-.header-profile-avatar {
-  width: 24px;
-  height: 24px;
+
+.header-avatar {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1px solid var(--border);
   flex-shrink: 0;
 }
-.header-profile-login {
+
+.header-login {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  flex: 1;
-  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.header-profile-arrow {
+
+.header-sep {
   color: var(--text-muted);
+  font-size: 12px;
   flex-shrink: 0;
-  transition: color 0.15s;
 }
-.header-profile:hover .header-profile-arrow {
-  color: var(--blue-light);
+
+.header-stats {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-ghost-danger:hover {
+  background: var(--danger-muted);
+  border-color: var(--danger);
+  color: var(--danger-hover);
 }
 
 /* ── Token screen ── */

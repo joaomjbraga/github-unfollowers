@@ -6,6 +6,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.3.0] - 2026-06-26
+
+### Adicionado
+
+- **Contador de seguidores no header** — exibe o número de seguidores do perfil ao lado do login, com formatação localizada (pt-BR).
+
+### Alterado
+
+- **Header compacto de linha única** — unificou perfil, contador e ações em uma única linha (~40px), liberando ~38px verticais para a lista de usuários.
+
+---
+
 ## [1.2.1] - 2026-06-25
 
 ### Alterado
