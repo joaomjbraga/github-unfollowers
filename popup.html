@@ -23,7 +23,7 @@
           <span class="token-step-num">2</span>
           <div class="token-step-body">
             <strong class="token-step-title">Copie o token</strong>
-            <span class="token-step-desc">Começa com <code>github_pat_</code></span>
+            <span class="token-step-desc">Começa com <code>ghp_</code></span>
           </div>
         </div>
 
@@ -93,9 +93,9 @@
             </div>
           </div>
           <div class="skeleton-section skeleton-tabs">
-            <div class="skeleton-line skeleton-tab" style="width:120px"></div>
-            <div class="skeleton-line skeleton-tab" style="width:70px"></div>
-            <div class="skeleton-line skeleton-tab" style="width:80px"></div>
+            <div class="skeleton-line skeleton-tab" style="flex:1"></div>
+            <div class="skeleton-line skeleton-tab" style="flex:1"></div>
+            <div class="skeleton-line skeleton-tab" style="flex:1"></div>
           </div>
           <div class="skeleton-section skeleton-toolbar">
             <div class="skeleton-line skeleton-search" style="width:100%"></div>
@@ -142,7 +142,7 @@
       </div>
 
       <div id="error-state" class="hidden">
-        <div class="error-box" id="main-error"></div>
+        <div class="error-box" id="main-error" aria-live="polite"></div>
       </div>
 
       <div id="results-state" class="hidden">
@@ -178,6 +178,7 @@
         <div class="list-header">
           <span class="list-header-left" id="list-label">Não te seguem de volta</span>
           <div class="list-header-actions">
+            <button class="btn btn-ghost hidden" id="btn-cancel-mass" type="button">Cancelar</button>
             <button class="follow-all-btn hidden" id="btn-follow-all">Seguir todos</button>
             <button class="unfollow-all-btn" id="btn-unfollow-all">Parar de seguir todos</button>
           </div>
@@ -212,7 +213,7 @@
         <p class="modal-text" id="modal-text">
           Você está prestes a deixar de seguir
           <strong id="modal-count">0</strong>
-          usuário(s) que não te seguem de volta. Esta ação não pode ser desfeita.
+          usuário(s) que não te seguem de volta.
         </p>
         <div class="modal-actions">
           <button class="btn btn-ghost modal-cancel" id="modal-cancel">Cancelar</button>

@@ -183,6 +183,14 @@ export function clearCache() {
   cache.clear();
 }
 
+export async function initCache() {
+  await cache.loadFromStorage();
+}
+
+export async function persistCache() {
+  await cache.saveToStorage();
+}
+
 export function getStorage(key) {
   return new Promise((resolve) =>
     chrome.storage.local.get([key], (res) => resolve(res[key] || null)),

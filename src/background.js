@@ -1,8 +1,31 @@
 const GH = "https://api.github.com";
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("check", { periodInMinutes: 15 });
-});
+// Chaves compartilhadas com o popup (src/app.js). Precisam ser as MESMAS,
+// senão o background e o popup ficam comparando contra baselines diferentes
+// e o badge do ícone nunca reflete o que o usuário vê na lista.
+const SNAPSHOT_KEYS = {
+  unfollowers: "snapshot_unfollowers",
+  notFollowingBack: "snapshot_not_following_back",
+  mutuals: "snapshot_mutuals",
+  initialized: "snapshot_initialized",
+};
+
+function ensureAlarm() {
+  // 1 minuto é o mínimo que o Chrome aceita sem reclamar (chrome.alarms
+  // clampa qualquer período menor pra 1 min em extensões publicadas).
+  // Isso já dá ~60 checagens/hora, bem dentro do limite de 5000 req/hora
+  // da API do GitHub autenticada (cada checagem usa só 2-3 requisições
+  // na maioria dos casos, por causa do cache de ETag).
+  chrome.alarms.create("check", { periodInMinutes: 1 });
+  // Não espera o primeiro alarme disparar: checa agora mesmo.
+  checkForChanges();
+}
+
+// onInstalled só dispara em instalação/atualização da extensão.
+// onStartup garante que o alarme também sobrevive caso seja perdido
+// (ex: perfil corrompido, alarme limpo manualmente, etc).
+chrome.runtime.onInstalled.addListener(ensureAlarm);
+chrome.runtime.onStartup.addListener(ensureAlarm);
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "check") checkForChanges();
@@ -129,27 +152,25 @@ async function checkForChanges() {
 
   const { unfollowers, notFollowingBack, mutuals } = compute({ followers, following });
 
-  const prevU = (await get("bg_unfollowers_snapshot")) || [];
-  const prevN = (await get("bg_not_following_back_snapshot")) || [];
-  const prevM = (await get("bg_mutuals_snapshot")) || [];
-
-  const firstRun = prevU.length === 0 && prevN.length === 0 && prevM.length === 0;
+  const prevU = (await get(SNAPSHOT_KEYS.unfollowers)) || [];
+  const prevN = (await get(SNAPSHOT_KEYS.notFollowingBack)) || [];
+  const prevM = (await get(SNAPSHOT_KEYS.mutuals)) || [];
+  const initialized = (await get(SNAPSHOT_KEYS.initialized)) || false;
 
   const newU = unfollowers.filter((u) => !prevU.includes(u.login));
   const newN = notFollowingBack.filter((u) => !prevN.includes(u.login));
   const newM = mutuals.filter((u) => !prevM.includes(u.login));
 
-  await set("bg_unfollowers_snapshot", unfollowers.map((u) => u.login));
-  await set("bg_not_following_back_snapshot", notFollowingBack.map((u) => u.login));
-  await set("bg_mutuals_snapshot", mutuals.map((u) => u.login));
+  await set(SNAPSHOT_KEYS.unfollowers, unfollowers.map((u) => u.login));
+  await set(SNAPSHOT_KEYS.notFollowingBack, notFollowingBack.map((u) => u.login));
+  await set(SNAPSHOT_KEYS.mutuals, mutuals.map((u) => u.login));
+  await set(SNAPSHOT_KEYS.initialized, true);
 
-  if (firstRun) return;
+  // Sem baseline ainda (primeira vez que QUALQUER lado - popup ou background -
+  // roda) não há "novidade" real para notificar, só a foto inicial.
+  if (!initialized) return;
 
   if (newU.length === 0 && newN.length === 0 && newM.length === 0) return;
-
-  await set("bg_new_unfollowers", newU.map((u) => u.login));
-  await set("bg_new_not_following_back", newN.map((u) => u.login));
-  await set("bg_new_mutuals", newM.map((u) => u.login));
 
   showNotification({ unfollowers: newU.length, notFollowingBack: newN.length, mutuals: newM.length });
 }

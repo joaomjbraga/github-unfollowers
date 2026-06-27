@@ -6,6 +6,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.4.0] - 2026-06-27
+
+### Alterado
+
+- **Redesign visual estilo iOS** — nova paleta baseada no dark mode do iOS (preto verdadeiro, cards elevados em camadas, cores de sistema `systemGreen`/`systemRed`/`systemBlue`). Abas migraram para um segmented control. A lista de usuários agora vive dentro de um card "inset grouped" com separadores internos finos em vez de bordas retas. O modal de confirmação foi substituído por um action sheet que sobe de baixo, com o botão destrutivo cheio no topo e "Cancelar" como segundo botão — no padrão nativo do iOS.
+- **Header com blur** — a barra superior agora usa `backdrop-filter` translúcido em vez de fundo opaco sólido.
+
+### Corrigido
+
+- **Card de lista vazando em estados vazios** — quando "Tudo certo!" ou "Nenhum resultado" aparecem, o card da lista de usuários (agora com fundo sólido) não fica mais visível por baixo da mensagem.
+
+---
+
+## [1.3.2] - 2026-06-27
+
+### Adicionado
+
+- **Retomada de ações em massa** — o progresso de "Seguir todos" / "Parar de seguir todos" agora é salvo em `chrome.storage.local` a cada item processado. Se o popup fechar (acidentalmente ou não) no meio do processo, reabrir a extensão retoma a fila pendente automaticamente a partir de onde parou, em vez de perder a contagem.
+
+---
+
 ## [1.3.1] - 2026-06-26
 
 ### Alterado
