@@ -147,9 +147,21 @@ function showModal({ count, isFollow }) {
     modalConfirm.disabled = false;
     modalCancel.disabled = false;
 
+    const focusable = [modalCancel, modalConfirm];
+    const trapTab = (e) => {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      const idx = focusable.indexOf(document.activeElement);
+      const next = focusable[(idx + (e.shiftKey ? -1 : 1) + 2) % 2];
+      next.focus();
+    };
+    document.addEventListener("keydown", trapTab);
+    modalCancel.focus();
+
     const cleanup = () => {
       modalConfirm.removeEventListener("click", onConfirm);
       modalCancel.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", trapTab);
       modalOverlay.classList.add("hidden");
     };
     const onConfirm = () => { cleanup(); resolve(true); };
