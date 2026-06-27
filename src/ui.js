@@ -1,5 +1,204 @@
 import { $ } from "./dom.js";
 
+const VIRTUAL_THRESHOLD = 50;
+const ITEM_HEIGHT = 52;
+const OVERSCAN = 10;
+
+let currentVirtual = null;
+
+class VirtualScroll {
+  constructor(container, list, actions, newSet) {
+    this.container = container;
+    this.list = list;
+    this.actions = actions;
+    this.newSet = newSet;
+    this.pool = [];
+    this.nodes = new Map();
+    this.lastStart = -1;
+    this.lastEnd = -1;
+
+    container.innerHTML = "";
+    container.style.position = "relative";
+
+    this.viewport = document.createElement("div");
+    this.viewport.style.position = "relative";
+    this.viewport.style.height = `${list.length * ITEM_HEIGHT}px`;
+    this.viewport.style.pointerEvents = "none"; // eventos passam para os filhos absolutamente posicionados
+    container.appendChild(this.viewport);
+
+    this.boundScroll = () => this.onScroll();
+    container.addEventListener("scroll", this.boundScroll);
+    this.onScroll();
+  }
+
+  update(list, actions, newSet) {
+    this.list = list;
+    this.actions = actions;
+    this.newSet = newSet;
+
+    for (const node of this.nodes.values()) {
+      this.releaseNode(node);
+    }
+    this.nodes.clear();
+    this.viewport.style.height = `${list.length * ITEM_HEIGHT}px`;
+    this.lastStart = -1;
+    this.lastEnd = -1;
+    this.onScroll();
+  }
+
+  onScroll() {
+    const { scrollTop, clientHeight } = this.container;
+    const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
+    const end = Math.min(
+      this.list.length,
+      Math.ceil((scrollTop + clientHeight) / ITEM_HEIGHT) + OVERSCAN,
+    );
+
+    if (start === this.lastStart && end === this.lastEnd) return;
+
+    for (const [index, node] of this.nodes) {
+      if (index < start || index >= end) {
+        this.releaseNode(node);
+        this.nodes.delete(index);
+      }
+    }
+
+    for (let i = start; i < end; i++) {
+      if (this.nodes.has(i)) continue;
+      const user = this.list[i];
+      if (!user) continue;
+      const node = this.acquireNode();
+      this.populate(node, user, i);
+      node.style.top = `${i * ITEM_HEIGHT}px`;
+      this.viewport.appendChild(node);
+      this.nodes.set(i, node);
+    }
+
+    this.lastStart = start;
+    this.lastEnd = end;
+  }
+
+  acquireNode() {
+    return this.pool.pop() || document.createElement("div");
+  }
+
+  releaseNode(node) {
+    node.innerHTML = "";
+    node.removeAttribute("style");
+    if (node.parentNode) node.parentNode.removeChild(node);
+    this.pool.push(node);
+  }
+
+  populate(node, user, index) {
+    const { isMutual, isNotFollowingBack, followUser, unfollowUser } =
+      this.actions;
+    const isNew = this.newSet.has(user.login);
+
+    node.className = "user-item virtual";
+    node.dataset.login = user.login;
+    if (isNew) node.classList.add("is-new");
+    node.innerHTML = `
+      <img class="avatar" src="${escHtml(user.avatar_url)}&s=64" alt="@${escHtml(user.login)}" loading="lazy" />
+      <div class="user-info">
+        <a class="user-login" href="https://github.com/${escHtml(user.login)}" target="_blank">
+          ${escHtml(user.login)}
+        </a>
+        <div class="user-meta">
+          ${user.name ? `<span class="user-name">${escHtml(user.name)}</span>` : ""}
+          ${user.followers != null ? `<span class="user-sep">·</span><span class="user-followers">${escHtml(String(user.followers))} seguidores</span>` : ""}
+          ${isNew ? `<span class="badge-new">Novo</span>` : ""}
+        </div>
+      </div>
+      ${
+        isMutual
+          ? `<span class="badge-mutual">Mútuo</span>`
+          : isNotFollowingBack
+            ? `<button class="btn btn-primary-sm" data-login="${escHtml(user.login)}">Seguir</button>`
+            : `<button class="btn btn-danger-sm" data-login="${escHtml(user.login)}">Parar de seguir</button>`
+      }
+    `;
+
+    const button = node.querySelector("button");
+    if (button) {
+      button.addEventListener("click", () => {
+        if (isNotFollowingBack && followUser) {
+          followUser(user.login);
+        } else if (!isMutual && unfollowUser) {
+          unfollowUser(user.login);
+        }
+      });
+    }
+
+    node.style.position = "absolute";
+    node.style.left = "0";
+    node.style.right = "0";
+    node.style.height = `${ITEM_HEIGHT}px`;
+  }
+
+  destroy() {
+    this.container.removeEventListener("scroll", this.boundScroll);
+    for (const node of this.nodes.values()) {
+      this.releaseNode(node);
+    }
+    this.nodes.clear();
+    this.pool = [];
+    this.viewport.remove();
+    this.container.innerHTML = "";
+    this.container.style.position = "";
+    currentVirtual = null;
+  }
+}
+
+function renderFullList(userList, list, actions, newSet, isMutual, isNotFollowingBack) {
+  userList.innerHTML = "";
+  userList.style.position = "";
+
+  list.forEach((user, i) => {
+    const item = document.createElement("div");
+    item.className = "user-item";
+    item.dataset.login = user.login;
+    item.style.animationDelay = `${Math.min(i * 20, 200)}ms`;
+
+    const isNew = newSet.has(user.login);
+
+    if (isNew) item.classList.add("is-new");
+
+    item.innerHTML = `
+      <img class="avatar" src="${escHtml(user.avatar_url)}&s=64" alt="@${escHtml(user.login)}" loading="lazy" />
+      <div class="user-info">
+        <a class="user-login" href="https://github.com/${escHtml(user.login)}" target="_blank">
+          ${escHtml(user.login)}
+        </a>
+        <div class="user-meta">
+          ${user.name ? `<span class="user-name">${escHtml(user.name)}</span>` : ""}
+          ${user.followers != null ? `<span class="user-sep">·</span><span class="user-followers">${escHtml(String(user.followers))} seguidores</span>` : ""}
+          ${isNew ? `<span class="badge-new">Novo</span>` : ""}
+        </div>
+      </div>
+      ${
+        isMutual
+          ? `<span class="badge-mutual">Mútuo</span>`
+          : isNotFollowingBack
+            ? `<button class="btn btn-primary-sm" data-login="${escHtml(user.login)}">Seguir</button>`
+            : `<button class="btn btn-danger-sm" data-login="${escHtml(user.login)}">Parar de seguir</button>`
+      }
+    `;
+
+    const button = item.querySelector("button");
+    if (button) {
+      if (isNotFollowingBack && actions.followUser) {
+        button.addEventListener("click", () => actions.followUser(user.login));
+      } else if (!isMutual && actions.unfollowUser) {
+        button.addEventListener("click", () =>
+          actions.unfollowUser(user.login),
+        );
+      }
+    }
+
+    userList.appendChild(item);
+  });
+}
+
 export function updateStats(state) {
   $("count-all").textContent = state.unfollowers.length;
   $("count-mutual").textContent = state.mutuals.length;
@@ -45,7 +244,7 @@ export function getFilteredList({
   return source;
 }
 
-export function renderList(state, actions = {}, newLogins = []) {
+export function renderList(state, actions = {}) {
   const list = getFilteredList(state);
   const isMutual = state.activeTab === "mutual";
   const isNotFollowingBack = state.activeTab === "not-following-back";
@@ -64,21 +263,26 @@ export function renderList(state, actions = {}, newLogins = []) {
   );
   allFollowingBack.classList.add("hidden");
   emptyFiltered.classList.add("hidden");
-  userList.innerHTML = "";
 
   if (isMutual && state.mutuals.length === 0) {
+    currentVirtual?.destroy();
+    currentVirtual = null;
     $("all-following-back-msg").innerHTML =
       "<strong>Nenhum seguidor mútuo.</strong>";
     allFollowingBack.classList.remove("hidden");
     return;
   }
   if (!isMutual && !isNotFollowingBack && state.unfollowers.length === 0) {
+    currentVirtual?.destroy();
+    currentVirtual = null;
     $("all-following-back-msg").innerHTML =
       "<strong>Tudo certo!</strong> Todos que você segue te seguem de volta.";
     allFollowingBack.classList.remove("hidden");
     return;
   }
   if (isNotFollowingBack && state.notFollowingBack.length === 0) {
+    currentVirtual?.destroy();
+    currentVirtual = null;
     $("all-following-back-msg").innerHTML =
       "<strong>Todos que te seguem, você já segue de volta.</strong>";
     allFollowingBack.classList.remove("hidden");
@@ -86,52 +290,47 @@ export function renderList(state, actions = {}, newLogins = []) {
   }
 
   if (list.length === 0) {
+    currentVirtual?.destroy();
+    currentVirtual = null;
     emptyFiltered.classList.remove("hidden");
     return;
   }
 
-  const newSet = new Set(newLogins);
-  list.forEach((user, i) => {
-    const item = document.createElement("div");
-    item.className = "user-item";
-    item.dataset.login = user.login;
-    item.style.animationDelay = `${Math.min(i * 20, 200)}ms`;
+  let newSet;
+  if (isMutual) {
+    newSet = new Set((state.newMutuals || []).map((u) => u.login));
+  } else if (isNotFollowingBack) {
+    newSet = new Set((state.newNotFollowingBack || []).map((u) => u.login));
+  } else {
+    newSet = new Set((state.newUnfollowers || []).map((u) => u.login));
+  }
 
-    const isNew = !isMutual && !isNotFollowingBack && newSet.has(user.login);
+  if (!state.sortBy || state.sortBy === "default") {
+    list.sort((a, b) => +(newSet.has(b.login)) - +(newSet.has(a.login)));
+  }
 
-    item.innerHTML = `
-      <img class="avatar" src="${user.avatar_url}&s=64" alt="${escHtml(user.login)}" loading="lazy" />
-      <div class="user-info">
-        <a class="user-login" href="https://github.com/${escHtml(user.login)}" target="_blank">
-          ${escHtml(user.login)}
-        </a>
-        <div class="user-meta">
-          ${user.name ? `<span class="user-name">${escHtml(user.name)}</span>` : ""}
-          ${isNew ? `<span class="badge-new">Novo</span>` : ""}
-        </div>
-      </div>
-      ${
-        isMutual
-          ? `<span class="badge-mutual">Mútuo</span>`
-          : isNotFollowingBack
-            ? `<button class="btn btn-primary-sm" data-login="${escHtml(user.login)}">Seguir</button>`
-            : `<button class="btn btn-danger-sm" data-login="${escHtml(user.login)}">Parar de seguir</button>`
-      }
-    `;
+  const useVirtual = list.length > VIRTUAL_THRESHOLD;
 
-    const button = item.querySelector("button");
-    if (button) {
-      if (isNotFollowingBack && actions.followUser) {
-        button.addEventListener("click", () => actions.followUser(user.login));
-      } else if (!isMutual && actions.unfollowUser) {
-        button.addEventListener("click", () =>
-          actions.unfollowUser(user.login),
-        );
-      }
+  if (currentVirtual && !useVirtual) {
+    currentVirtual.destroy();
+    currentVirtual = null;
+  }
+
+  const actionsWithMeta = {
+    ...actions,
+    isMutual,
+    isNotFollowingBack,
+  };
+
+  if (useVirtual) {
+    if (!currentVirtual) {
+      currentVirtual = new VirtualScroll(userList, list, actionsWithMeta, newSet);
+    } else {
+      currentVirtual.update(list, actionsWithMeta, newSet);
     }
-
-    userList.appendChild(item);
-  });
+  } else {
+    renderFullList(userList, list, actionsWithMeta, newSet, isMutual, isNotFollowingBack);
+  }
 }
 
 export function showToken() {
@@ -179,47 +378,6 @@ export function escHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-export function removeUserItem(login) {
-  const item = document.querySelector(`[data-login="${login}"]`);
-  if (item) item.remove();
-}
-
-export function refreshEmptyState(state) {
-  const userList = $("user-list");
-  const emptyFiltered = $("empty-filtered");
-  const allFollowingBack = $("all-following-back");
-
-  allFollowingBack.classList.add("hidden");
-  emptyFiltered.classList.add("hidden");
-
-  if (userList.children.length > 0) return;
-
-  const isMutual = state.activeTab === "mutual";
-  const isNotFollowingBack = state.activeTab === "not-following-back";
-
-  if (isMutual && state.mutuals.length === 0) {
-    $("all-following-back-msg").innerHTML =
-      "<strong>Nenhum seguidor mútuo.</strong>";
-    allFollowingBack.classList.remove("hidden");
-    return;
-  }
-  if (!isMutual && !isNotFollowingBack && state.unfollowers.length === 0) {
-    $("all-following-back-msg").innerHTML =
-      "<strong>Tudo certo!</strong> Todos que você segue te seguem de volta.";
-    allFollowingBack.classList.remove("hidden");
-    return;
-  }
-  if (isNotFollowingBack && state.notFollowingBack.length === 0) {
-    $("all-following-back-msg").innerHTML =
-      "<strong>Todos que te seguem, você já segue de volta.</strong>";
-    allFollowingBack.classList.remove("hidden");
-    refreshFollowAllBtn(state);
-    return;
-  }
-
-  emptyFiltered.classList.remove("hidden");
 }
 
 export function refreshUnfollowAllBtn(state) {

@@ -338,6 +338,12 @@ async function followUser(login) {
 }
 function bindEventListeners() {
   btnConnect.addEventListener("click", handleConnect);
+  tokenInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleConnect();
+    }
+  });
   btnCreateToken.addEventListener("click", () => {
     window.open(
       "https://github.com/settings/tokens/new?description=GitHub+Unfollowers&scopes=read:user,user:follow",

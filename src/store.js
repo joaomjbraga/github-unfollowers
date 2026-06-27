@@ -7,9 +7,13 @@ export const state = {
   notFollowingBack: [],
   mutuals: [],
   newUnfollowers: [],
+  newNotFollowingBack: [],
+  newMutuals: [],
   sortBy: "default",
   activeTab: "all",
   query: "",
+  cancelMassAction: false,
+  isProcessing: false,
 };
 
 export function resetState() {
@@ -21,7 +25,11 @@ export function resetState() {
   state.notFollowingBack = [];
   state.mutuals = [];
   state.newUnfollowers = [];
+  state.newNotFollowingBack = [];
+  state.newMutuals = [];
   state.sortBy = "default";
   state.activeTab = "all";
   state.query = "";
+  state.cancelMassAction = false;
+  state.isProcessing = false;
 }

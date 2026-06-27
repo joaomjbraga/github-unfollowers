@@ -6,7 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
-## [1.3.0] - 2026-06-26
+## [1.3.1] - 2026-06-26
+
+### Alterado
+
+- **TOKEN SCREEN centralizada** — tela de login redimensionada e centralizada verticalmente, hero/título removidos
+- **Campo de token otimizado** — input com mesmo tamanho do botão, enter no campo conecta automaticamente
+- **Botão toggle removido** — simplificação do fluxo de login ao remover UI não essencial
+
+---
 
 ### Adicionado
 

@@ -119,28 +119,14 @@ body {
 
 /* ── Token screen ── */
 #screen-token {
-  padding: 20px 16px;
-}
-.token-hero {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  text-align: center;
-  padding: 24px 0 20px;
-  gap: 12px;
-}
-.token-hero svg {
-  color: var(--text-secondary);
-}
-.token-hero h2 {
-  font-size: 16px;
-  font-weight: 600;
-}
-.token-hero p {
-  color: var(--text-secondary);
-  font-size: 13px;
-  max-width: 300px;
-  line-height: 1.6;
+  position: relative;
+  min-height: 100%;
+  padding: 0 12px;
+  gap: 8px;
 }
 
 .field-group {
@@ -161,8 +147,9 @@ body {
   border-radius: var(--radius);
   color: var(--text-primary);
   font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  padding: 8px 10px;
+  font-size: 13px;
+  padding: 7px 14px;
+  line-height: 1;
   outline: none;
   transition: border-color 0.15s;
 }
@@ -770,8 +757,14 @@ body {
   100% { transform: translateX(100%); }
 }
 
+.token-step + .btn-create-token {
+  margin-top: 8px;
+}
 .error-box {
-  margin: 12px;
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
   background: rgba(218, 54, 51, 0.08);
   border: 1px solid rgba(218, 54, 51, 0.3);
   border-radius: var(--radius);
