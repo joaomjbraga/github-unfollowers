@@ -28,12 +28,18 @@
 - 🔍 Identifique usuários que você segue mas não te seguem de volta
 - 👥 Veja quem te segue mas você não segue de volta (follow back)
 - 🤝 Visualize seguidores mútuos
+- 🔔 Badge no ícone da extensão com total de novos não-seguidores
+- 📊 Comparativo histórico com badge "Novo" nas listas
 - ⚡ Consulta rápida através da REST API do GitHub
 - 🔗 Links diretos para o perfil de cada usuário
 - ❌ Deixe de seguir / ✅ Siga diretamente pela extensão
-- 🔔 Modal de confirmação para ação em massa
-- 💾 Persistência local de dados com a Chrome Storage API
-- 🪶 Interface leve e intuitiva com tema dark
+- 📋 Ações em massa (seguir todos / deixar de seguir todos)
+- 🔄 Retomada automática de ações em massa com confirmação
+- 🛡️ Whitelist de usuários ignorados
+- 💾 Cache local com a Chrome Storage API
+- 🌙 Tema dark/light com alternância
+- ⌨️ Atalhos de teclado e navegação por setas nas abas
+- ♿ Acessibilidade com ARIA roles e focus trap
 
 ---
 
@@ -99,18 +105,29 @@ chrome://extensions
 ```
 github-unfollowers/
 ├── popup.html              Interface HTML
-├── popup.css               Estilos e tema dark
-├── manifest.json           Configuração da extensão
+├── popup.css               Estilos e tema dark/light
+├── manifest.json           Configuração da extensão (MV3)
+├── tsconfig.json           TypeScript checkJs para verificação de tipos
 ├── src/
-│   ├── main.js             Bootstrap, eventos e fluxos
+│   ├── main.js             Bootstrap (importa app.js)
+│   ├── app.js              Lógica principal, eventos, follow/unfollow
+│   ├── ui.js               Renderização, histórico, whitelist, virtual scroll
+│   ├── api.js              GitHub REST API com retry, rate-limit, ETag cache
+│   ├── background.js       Service worker — detecta mudanças em segundo plano
+│   ├── storage.js          Wrapper tipado para chrome.storage.local
 │   ├── store.js            Estado global compartilhado
-│   ├── api.js              GitHub API + chrome.storage
-│   ├── ui.js               Renderização, stats, ações follow/unfollow
-│   └── dom.js              Helpers $() e $$()
+│   ├── cache.js            Cache ETag por página
+│   ├── constants.js        Constantes compartilhadas (keys, timeouts, etc.)
+│   ├── dom.js              Helpers $() e $$()
+│   ├── history.js          Histórico de comparações (30 dias)
+│   ├── theme.js            Gerenciamento de tema dark/light
+│   ├── whitelist.js        Gerenciamento da whitelist
+│   └── utils.js            Funções utilitárias (computeRelationshipLists, sleep)
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
+├── CHANGELOG.md
 └── README.md
 ```
 

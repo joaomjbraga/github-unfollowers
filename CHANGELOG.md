@@ -32,6 +32,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 ### Corrigido
 
 - **Card de lista vazando em estados vazios** — quando "Tudo certo!" ou "Nenhum resultado" aparecem, o card da lista de usuários (agora com fundo sólido) não fica mais visível por baixo da mensagem.
+- **Botão "Parar" no erro de unfollow** — o botão individual voltava com texto "Parar" em vez de "Deixar de seguir" ao ocorrer erro na API.
+- **done counter impreciso em ações em massa** — o contador de progresso só incrementa agora em caso de sucesso, não mais em falhas.
+- **Focus trap no modal de confirmação** — Tab/Shift+Tab agora cicla apenas entre os botões do modal, sem escapar para trás da overlay.
+
+### Acessibilidade
+
+- **ARIA nas abas** — `role="tablist"`, `role="tab"`, `aria-selected` e `tabindex` adicionados nas nav-tabs e sub-tabs, com navegação por setas (ArrowLeft/ArrowRight).
+- **Avatar com suporte a teclado** — `tabindex="0"`, `role="button"` e evento Enter/Space para abrir painel de perfil.
+- **Progresso com ARIA** — `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax` e `aria-live="polite"` no label de carregamento.
+- **Focus trap no modal** — foco preso dentro do modal enquanto aberto.
+
+### Alterado
+
+- **Confirmação ao retomar ação em massa** — se o popup fechar no meio de uma ação em massa, ao reabrir um modal pergunta se deseja retomar, em vez de disparar automaticamente.
+- **Badge no ícone da extensão** — quando o background detecta novos não-seguidores, o ícone na toolbar exibe um badge laranja com o total de novidades. O badge é limpo ao abrir o popup.
+- **tsconfig.json adicionado** — TypeScript `checkJs: true` para verificação de tipos nos arquivos `.js` sem necessidade de migração.
 
 ---
 
