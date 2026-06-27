@@ -98,6 +98,13 @@ async function checkForChanges() {
   }
 
   await setStorageMulti(writes);
+
+  // Atualiza badge do ícone com total de novidades
+  const totalNew = newU.length + newN.length + newM.length;
+  if (totalNew > 0) {
+    chrome.action.setBadgeText({ text: String(totalNew) });
+    chrome.action.setBadgeBackgroundColor({ color: "#e34c26" });
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -535,6 +535,7 @@ async function handleRefresh() {
   api.clearCache();
   state.user = null;
   resetViewState();
+  chrome.action.setBadgeText({ text: "" });
   await refreshUserData();
 }
 
@@ -691,6 +692,7 @@ function bindEventListeners() {
 // ---------------------------------------------------------------------------
 
 async function init() {
+  chrome.action.setBadgeText({ text: "" });
   currentTheme = await initTheme();
   bindEventListeners();
   await api.initCache();
