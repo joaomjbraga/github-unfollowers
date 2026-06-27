@@ -6,39 +6,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
-## [1.4.0] - 2026-06-27
-
-### Alterado
-
-- **Redesign visual estilo iOS** — nova paleta baseada no dark mode do iOS (preto verdadeiro, cards elevados em camadas, cores de sistema `systemGreen`/`systemRed`/`systemBlue`). Abas migraram para um segmented control. A lista de usuários agora vive dentro de um card "inset grouped" com separadores internos finos em vez de bordas retas. O modal de confirmação foi substituído por um action sheet que sobe de baixo, com o botão destrutivo cheio no topo e "Cancelar" como segundo botão — no padrão nativo do iOS.
-- **Header com blur** — a barra superior agora usa `backdrop-filter` translúcido em vez de fundo opaco sólido.
-
-### Corrigido
-
-- **Card de lista vazando em estados vazios** — quando "Tudo certo!" ou "Nenhum resultado" aparecem, o card da lista de usuários (agora com fundo sólido) não fica mais visível por baixo da mensagem.
-
----
-
-## [1.3.2] - 2026-06-27
+## [1.3.0] - 2026-06-27
 
 ### Adicionado
 
 - **Retomada de ações em massa** — o progresso de "Seguir todos" / "Parar de seguir todos" agora é salvo em `chrome.storage.local` a cada item processado. Se o popup fechar (acidentalmente ou não) no meio do processo, reabrir a extensão retoma a fila pendente automaticamente a partir de onde parou, em vez de perder a contagem.
-
----
-
-## [1.3.1] - 2026-06-26
-
-### Alterado
-
-- **TOKEN SCREEN centralizada** — tela de login redimensionada e centralizada verticalmente, hero/título removidos
-- **Campo de token otimizado** — input com mesmo tamanho do botão, enter no campo conecta automaticamente
-- **Botão toggle removido** — simplificação do fluxo de login ao remover UI não essencial
-
----
-
-### Adicionado
-
 - **Contador de seguidores no header** — exibe o número de seguidores do perfil ao lado do login, com formatação localizada (pt-BR).
 - **Comparativo histórico** — novos não-seguidores desde a última verificação são marcados com um badge "Novo" na lista.
 - **Follow back em massa** — botão "Seguir todos" na aba "Não sigo" para seguir de volta todos de uma vez, com modal de confirmação e rate-limit awareness.
@@ -46,11 +18,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ### Alterado
 
+- **Redesign visual estilo iOS** — nova paleta baseada no dark mode do iOS (preto verdadeiro, cards elevados em camadas, cores de sistema `systemGreen`/`systemRed`/`systemBlue`). Abas migraram para um segmented control. A lista de usuários agora vive dentro de um card "inset grouped" com separadores internos finos em vez de bordas retas. O modal de confirmação foi substituído por um action sheet que sobe de baixo, com o botão destrutivo cheio no topo e "Cancelar" como segundo botão — no padrão nativo do iOS.
+- **Header com blur** — a barra superior agora usa `backdrop-filter` translúcido em vez de fundo opaco sólido.
+- **TOKEN SCREEN centralizada** — tela de login redimensionada e centralizada verticalmente, hero/título removidos
+- **Campo de token otimizado** — input com mesmo tamanho do botão, enter no campo conecta automaticamente
+- **Botão toggle removido** — simplificação do fluxo de login ao remover UI não essencial
 - **Header compacto de linha única** — unificou perfil, contador e ações em uma única linha (~40px), liberando ~38px verticais para a lista de usuários.
 - **Performance na lista** — follow/unfollow agora usam manipulação direta do DOM (DOM surgery) ao invés de reconstruir a lista inteira, tornando a ação instantânea.
 - **Debounce na busca** — input de pesquisa agora aguarda 200ms de pausa antes de renderizar, evitando re-renders desnecessários durante a digitação.
 - **Ordenação da lista** — seletor no toolbar permite ordenar por mais/menos seguidores e A-Z.
 - **Fluxo de login simplificado** — guia visual de 3 passos com botão "Criar token no GitHub" que abre a página de token com escopos pré-selecionados.
+
+### Corrigido
+
+- **Card de lista vazando em estados vazios** — quando "Tudo certo!" ou "Nenhum resultado" aparecem, o card da lista de usuários (agora com fundo sólido) não fica mais visível por baixo da mensagem.
 
 ---
 
