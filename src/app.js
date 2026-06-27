@@ -70,6 +70,15 @@ function setUserHeader(user) {
   $("header-followers").textContent = user.followers.toLocaleString("pt-BR");
 }
 
+function setTabSelected(container, activeEl) {
+  container.querySelectorAll("[role='tab']").forEach((t) => {
+    const isActive = t === activeEl;
+    t.classList.toggle("active", isActive);
+    t.setAttribute("aria-selected", String(isActive));
+    t.tabIndex = isActive ? 0 : -1;
+  });
+}
+
 function resetViewState() {
   state.activeTab = "all";
   state.query = "";
@@ -77,8 +86,7 @@ function resetViewState() {
   searchInput.value = "";
   sortSelect.value = "default";
   $("list-label").textContent = "Não te seguem de volta";
-  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-  $("tab-all").classList.add("active");
+  setTabSelected($("results-state").querySelector(".tabs"), $("tab-all"));
   showMainTab("results");
 }
 
@@ -94,8 +102,7 @@ function showMainTab(tab) {
   $("loading-state").classList.add("hidden");
   $("error-state").classList.add("hidden");
 
-  document.querySelectorAll(".nav-tab").forEach((t) => t.classList.remove("active"));
-  $(`nav-tab-${tab}`)?.classList.add("active");
+  setTabSelected($(".nav-bar"), $(`nav-tab-${tab}`));
 
   if (tab === "history") renderHistoryTab();
   if (tab === "whitelist") renderWhitelistTab();
@@ -344,9 +351,11 @@ async function unfollowUser(login) {
     ui.updateStats(state);
     ui.refreshEmptyState(state);
     ui.refreshUnfollowAllBtn(state);
+    return true;
   } catch (e) {
-    if (button) { button.disabled = false; button.textContent = "Parar"; }
+    if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
     ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+    return false;
   }
 }
 
@@ -369,9 +378,11 @@ async function followUser(login) {
     ui.removeUserItem(login);
     ui.updateStats(state);
     ui.refreshEmptyState(state);
+    return true;
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Seguir"; }
     ui.showError(`Erro ao seguir ${login}: ${e.message}`);
+    return false;
   }
 }
 
@@ -407,8 +418,8 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
 
   for (const user of items) {
     if (state.cancelMassAction) break;
-    await actionFn(user.login).catch(() => {});
-    done++;
+    const succeeded = await actionFn(user.login);
+    if (succeeded) done++;
     pending = pending.slice(1);
     button.textContent = `${processingLabel} (${done}/${totalCount})`;
     await saveMassActionProgress({ actionType, totalCount, pendingLogins: pending.map((u) => u.login) }).catch(() => {});
@@ -467,6 +478,9 @@ async function resumePendingMassAction() {
 
   if (items.length === 0) { await clearMassActionProgress().catch(() => {}); return; }
 
+  const confirmed = await showModal({ count: items.length, isFollow });
+  if (!confirmed) { await clearMassActionProgress().catch(() => {}); return; }
+
   await runMassAction({
     actionType, items,
     actionFn: isFollow ? followUser : unfollowUser,
@@ -496,8 +510,7 @@ const TAB_LABELS = {
 
 function handleTabClick(event) {
   const tab = event.currentTarget;
-  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-  tab.classList.add("active");
+  setTabSelected(tab.closest(".tabs"), tab);
   state.activeTab = tab.dataset.tab;
   state.query = "";
   searchInput.value = "";
@@ -558,6 +571,20 @@ function bindKeyboardShortcuts() {
 
     // Só ativa atalhos de tab quando a tela principal está visível
     if ($("screen-main").classList.contains("hidden")) return;
+
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      const tab = e.target.closest("[role='tab']");
+      if (tab) {
+        e.preventDefault();
+        const tablist = tab.closest("[role='tablist']");
+        const tabs = [...tablist.querySelectorAll("[role='tab']")];
+        const idx = tabs.indexOf(tab);
+        const next = tabs[(idx + (e.key === "ArrowLeft" ? -1 : 1) + tabs.length) % tabs.length];
+        next.click();
+        next.focus();
+        return;
+      }
+    }
 
     if (e.key === "1") document.querySelector('.tab[data-tab="all"]')?.click();
     else if (e.key === "2") document.querySelector('.tab[data-tab="not-following-back"]')?.click();

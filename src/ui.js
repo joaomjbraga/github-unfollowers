@@ -198,6 +198,15 @@ function bindUserItemEvents(node, user, { isMutual, isNotFollowingBack, followUs
       e.stopPropagation();
       onOpenProfile?.(user);
     });
+    avatar.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpenProfile?.(user);
+      }
+    });
+    avatar.tabIndex = 0;
+    avatar.setAttribute("role", "button");
     avatar.style.cursor = "pointer";
   }
 }
@@ -540,7 +549,9 @@ export function showResults() {
 }
 
 export function setProgress(pct) {
-  $("progress-bar").style.width = `${pct}%`;
+  const bar = $("progress-bar");
+  bar.style.width = `${pct}%`;
+  bar.setAttribute("aria-valuenow", pct);
 }
 
 export function showConnectError(msg) {
