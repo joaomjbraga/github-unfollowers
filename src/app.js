@@ -1,33 +1,19 @@
 import * as api from "./api.js";
 import { $ } from "./dom.js";
 import { resetState, state } from "./store.js";
+import { setStorageMulti, removeStorage, getStorage, setStorage } from "./storage.js";
 import * as ui from "./ui.js";
-import { computeRelationshipLists } from "./utils.js";
+import { computeRelationshipLists, sleep } from "./utils.js";
+import { STORAGE_KEYS, AUTO_REFRESH_MS } from "./constants.js";
+import { addEvent, loadHistory, clearHistory } from "./history.js";
+import { loadWhitelist, addToWhitelist, removeFromWhitelist } from "./whitelist.js";
+import { initTheme, toggleTheme, applyTheme, saveTheme } from "./theme.js";
 
-// Precisam ser EXATAMENTE as mesmas chaves usadas em src/background.js,
-// senão popup e background comparam contra baselines diferentes e o badge
-// do ícone nunca fica em sincronia com o que aparece na lista.
-const SNAPSHOT_KEYS = {
-  unfollowers: "snapshot_unfollowers",
-  notFollowingBack: "snapshot_not_following_back",
-  mutuals: "snapshot_mutuals",
-  initialized: "snapshot_initialized",
-};
+const { snapshots: SNAP, pending: PEND, cachedLists: CACHED_LISTS_KEY, massActionProgress: MASS_ACTION_KEY } = STORAGE_KEYS;
 
-// Chave usada para persistir o progresso de uma ação em massa em andamento.
-// Guardamos só os logins pendentes (não os objetos completos do usuário) porque
-// os dados completos já estão disponíveis em state.following/state.notFollowingBack
-// depois que refreshUserData() roda — não há necessidade de duplicar payload.
-const MASS_ACTION_KEY = "mass_action_progress";
-
-function updateBadge(totalNew) {
-  if (totalNew > 0) {
-    chrome.action.setBadgeText({ text: String(totalNew) });
-    chrome.action.setBadgeBackgroundColor({ color: "#da3633" });
-  } else {
-    chrome.action.setBadgeText({ text: "" });
-  }
-}
+// ---------------------------------------------------------------------------
+// Elementos DOM
+// ---------------------------------------------------------------------------
 
 const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
@@ -43,25 +29,39 @@ const modalConfirm = $("modal-confirm");
 const modalCancel = $("modal-cancel");
 const modalTitle = $("modal-title");
 const modalText = $("modal-text");
+const modalIcon = document.querySelector(".modal-icon");
 
-const AUTO_REFRESH_INTERVAL = 60000;
+// ---------------------------------------------------------------------------
+// Estado da aplicação (extensões ao store)
+// ---------------------------------------------------------------------------
+
+/** @type {Set<string>} */
+state.whitelist = new Set();
+/** @type {"dark"|"light"} */
+let currentTheme = "dark";
+
+// ---------------------------------------------------------------------------
+// Auto-refresh
+// ---------------------------------------------------------------------------
+
 let refreshTimer = null;
 let searchTimeout = null;
 
 function clearAutoRefresh() {
-  if (refreshTimer !== null) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
+  if (refreshTimer !== null) { clearInterval(refreshTimer); refreshTimer = null; }
 }
 
 function scheduleAutoRefresh() {
   clearAutoRefresh();
   refreshTimer = window.setInterval(async () => {
     if (!state.token || !state.user) return;
-    await refreshUserData().catch(() => {});
-  }, AUTO_REFRESH_INTERVAL);
+    await refreshUserData({ silent: true }).catch(() => {});
+  }, AUTO_REFRESH_MS);
 }
+
+// ---------------------------------------------------------------------------
+// UI helpers
+// ---------------------------------------------------------------------------
 
 function setUserHeader(user) {
   $("header-user").href = `https://github.com/${user.login}`;
@@ -77,11 +77,54 @@ function resetViewState() {
   searchInput.value = "";
   sortSelect.value = "default";
   $("list-label").textContent = "Não te seguem de volta";
-  document
-    .querySelectorAll(".tab")
-    .forEach((tab) => tab.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
   $("tab-all").classList.add("active");
+  showMainTab("results");
 }
+
+// ---------------------------------------------------------------------------
+// Sub-telas dentro da tela principal
+// ---------------------------------------------------------------------------
+
+function showMainTab(tab) {
+  // tab: "results" | "history" | "whitelist"
+  $("results-state").classList.toggle("hidden", tab !== "results");
+  $("history-state").classList.toggle("hidden", tab !== "history");
+  $("whitelist-state").classList.toggle("hidden", tab !== "whitelist");
+  $("loading-state").classList.add("hidden");
+  $("error-state").classList.add("hidden");
+
+  document.querySelectorAll(".nav-tab").forEach((t) => t.classList.remove("active"));
+  $(`nav-tab-${tab}`)?.classList.add("active");
+
+  if (tab === "history") renderHistoryTab();
+  if (tab === "whitelist") renderWhitelistTab();
+}
+
+async function renderHistoryTab() {
+  const events = await loadHistory();
+  ui.renderHistory(events);
+}
+
+async function renderWhitelistTab() {
+  const allUsers = [...state.following, ...state.followers];
+  ui.renderWhitelistManager(state.whitelist, allUsers);
+
+  // Bind remove buttons
+  $("whitelist-list").querySelectorAll("[data-remove]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const login = btn.dataset.remove;
+      await removeFromWhitelist(login);
+      state.whitelist.delete(login);
+      renderWhitelistTab();
+      ui.renderList(state, makeListActions());
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Modal de confirmação
+// ---------------------------------------------------------------------------
 
 function showModal({ count, isFollow }) {
   return new Promise((resolve) => {
@@ -91,6 +134,8 @@ function showModal({ count, isFollow }) {
       ? `Você está prestes a seguir <strong>${count}</strong> usuário(s) que te seguem.`
       : `Você está prestes a deixar de seguir <strong>${count}</strong> usuário(s) que não te seguem de volta.`;
     modalConfirm.textContent = isFollow ? "Sim, seguir" : "Sim, deixar de seguir";
+    if (modalIcon) modalIcon.style.color = isFollow ? "var(--accent-emphasis)" : "var(--danger-hover)";
+
     modalOverlay.classList.remove("hidden");
     modalConfirm.disabled = false;
     modalCancel.disabled = false;
@@ -100,26 +145,443 @@ function showModal({ count, isFollow }) {
       modalCancel.removeEventListener("click", onCancel);
       modalOverlay.classList.add("hidden");
     };
-
-    const onConfirm = () => {
-      cleanup();
-      resolve(true);
-    };
-
-    const onCancel = () => {
-      cleanup();
-      resolve(false);
-    };
-
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
     modalConfirm.addEventListener("click", onConfirm);
     modalCancel.addEventListener("click", onCancel);
   });
 }
 
+// ---------------------------------------------------------------------------
+// Painel de perfil
+// ---------------------------------------------------------------------------
+
+function makeListActions() {
+  return {
+    followUser,
+    unfollowUser,
+    onOpenProfile: handleOpenProfile,
+    whitelist: state.whitelist,
+  };
+}
+
+async function handleOpenProfile(user, mode) {
+  // Modo "whitelist" — toggle direto sem abrir painel
+  if (mode === "whitelist") {
+    await handleWhitelistToggle(user.login);
+    return;
+  }
+
+  // Abre painel e busca dados extras
+  const { isWhitelisted } = ui.openProfilePanel(user, {
+    whitelist: state.whitelist,
+    onWhitelistToggle: handleWhitelistToggle,
+  });
+
+  // Busca dados detalhados + repos em paralelo
+  try {
+    const [fullUser, repos] = await Promise.all([
+      api.ghFetch(`/users/${user.login}`),
+      api.ghFetch(`/users/${user.login}/repos?sort=stars&per_page=5`),
+    ]);
+    ui.openProfilePanel(fullUser, { whitelist: state.whitelist });
+    ui.renderProfileRepos(repos);
+  } catch {
+    ui.renderProfileRepos([]);
+  }
+
+  // Bind botão whitelist dentro do painel
+  $("profile-whitelist-btn").onclick = async () => {
+    await handleWhitelistToggle(user.login);
+    // Reatualiza o painel
+    const updated = state.whitelist.has(user.login);
+    const wlBtn = $("profile-whitelist-btn");
+    wlBtn.classList.toggle("is-whitelisted", updated);
+    wlBtn.innerHTML = updated
+      ? `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Z"/></svg> <span>Remover da whitelist</span>`
+      : `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.91l3.023-2.489a.75.75 0 0 1 .954 0L11.5 12.41V2.75a.25.25 0 0 0-.25-.25Z"/></svg> <span>Ignorar sempre</span>`;
+  };
+}
+
+async function handleWhitelistToggle(login) {
+  if (state.whitelist.has(login)) {
+    await removeFromWhitelist(login);
+    state.whitelist.delete(login);
+  } else {
+    await addToWhitelist(login);
+    state.whitelist.add(login);
+  }
+  ui.renderList(state, makeListActions());
+}
+
+// ---------------------------------------------------------------------------
+// Carregamento de dados
+// ---------------------------------------------------------------------------
+
+async function refreshUserData({ silent = false } = {}) {
+  if (!silent) {
+    ui.showLoading("Obtendo seu perfil...");
+    ui.setProgress(5);
+  }
+
+  try {
+    if (!state.user) state.user = await api.fetchUser();
+    setUserHeader(state.user);
+    if (!silent) ui.setProgress(15);
+
+    if (!silent) ui.showLoading("Carregando lista de seguindo...");
+    state.following = await api.fetchFollowing(state.user.login);
+    if (!silent) ui.setProgress(50);
+
+    if (!silent) ui.showLoading("Carregando lista de seguidores...");
+    state.followers = await api.fetchFollowers(state.user.login);
+    if (!silent) ui.setProgress(90);
+
+    if (!silent) ui.showLoading("Calculando...");
+    Object.assign(state, computeRelationshipLists({ followers: state.followers, following: state.following }));
+
+    const [pendingU, pendingN, pendingM, prevU, prevN, prevM, initialized] = await Promise.all([
+      getStorage(PEND.unfollowers),
+      getStorage(PEND.notFollowingBack),
+      getStorage(PEND.mutuals),
+      getStorage(SNAP.unfollowers),
+      getStorage(SNAP.notFollowingBack),
+      getStorage(SNAP.mutuals),
+      getStorage(SNAP.initialized),
+    ]);
+
+    if (initialized) {
+      const ownU = new Set(state.unfollowers.map((u) => u.login).filter((l) => !(prevU || []).includes(l)));
+      const ownN = new Set(state.notFollowingBack.map((u) => u.login).filter((l) => !(prevN || []).includes(l)));
+      const ownM = new Set(state.mutuals.map((u) => u.login).filter((l) => !(prevM || []).includes(l)));
+
+      const newU = new Set([...(pendingU || []), ...ownU]);
+      const newN = new Set([...(pendingN || []), ...ownN]);
+      const newM = new Set([...(pendingM || []), ...ownM]);
+
+      state.newUnfollowers = state.unfollowers.filter((u) => newU.has(u.login));
+      state.newNotFollowingBack = state.notFollowingBack.filter((u) => newN.has(u.login));
+      state.newMutuals = state.mutuals.filter((u) => newM.has(u.login));
+
+      // Registra no histórico (apenas novidades desta sessão)
+      const prevUSet = new Set(prevU || []);
+      const prevNSet = new Set(prevN || []);
+      for (const u of state.unfollowers) {
+        if (!prevUSet.has(u.login)) {
+          await addEvent({ type: "unfollowed", login: u.login, avatar_url: u.avatar_url });
+        }
+      }
+      for (const u of state.notFollowingBack) {
+        if (!prevNSet.has(u.login)) {
+          await addEvent({ type: "followed", login: u.login, avatar_url: u.avatar_url });
+        }
+      }
+    } else {
+      state.newUnfollowers = [];
+      state.newNotFollowingBack = [];
+      state.newMutuals = [];
+    }
+
+    await setStorageMulti({
+      [CACHED_LISTS_KEY]: {
+        following: state.following, followers: state.followers,
+        unfollowers: state.unfollowers, notFollowingBack: state.notFollowingBack,
+        mutuals: state.mutuals, ts: Date.now(),
+      },
+      [PEND.unfollowers]: [], [PEND.notFollowingBack]: [], [PEND.mutuals]: [],
+      [SNAP.unfollowers]: state.unfollowers.map((u) => u.login),
+      [SNAP.notFollowingBack]: state.notFollowingBack.map((u) => u.login),
+      [SNAP.mutuals]: state.mutuals.map((u) => u.login),
+      [SNAP.initialized]: true,
+    });
+
+    if (!silent) {
+      ui.setProgress(100);
+      ui.showResults();
+      scheduleAutoRefresh();
+    }
+    ui.updateStats(state);
+    ui.renderList(state, makeListActions());
+    api.persistCache().catch(() => {});
+  } catch (e) {
+    if (e.isAuthError) {
+      ui.showConnectError("Sessão expirada. Seu token foi removido. Faça login novamente.");
+      ui.showToken();
+    } else {
+      ui.showError(e.message);
+    }
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Follow / Unfollow individuais
+// ---------------------------------------------------------------------------
+
+async function unfollowUser(login) {
+  const item = $("user-list").querySelector(`[data-login="${login}"]`);
+  const button = item?.querySelector("[data-action='unfollow']");
+  if (button) { button.disabled = true; button.textContent = "..."; }
+
+  try {
+    await api.ghFetch(`/user/following/${login}`, "DELETE");
+
+    const userData = state.following.find((u) => u.login === login);
+    state.following = state.following.filter((u) => u.login !== login);
+    state.unfollowers = state.unfollowers.filter((u) => u.login !== login);
+    state.mutuals = state.mutuals.filter((u) => u.login !== login);
+
+    const wasFollower = state.followers.find((u) => u.login === login);
+    if (wasFollower && !state.notFollowingBack.some((u) => u.login === login)) {
+      state.notFollowingBack = [...state.notFollowingBack, wasFollower];
+    }
+
+    if (userData) {
+      await addEvent({ type: "unfollowed", login: userData.login, avatar_url: userData.avatar_url });
+    }
+
+    ui.removeUserItem(login);
+    ui.updateStats(state);
+    ui.refreshEmptyState(state);
+    ui.refreshUnfollowAllBtn(state);
+  } catch (e) {
+    if (button) { button.disabled = false; button.textContent = "Parar"; }
+    ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+  }
+}
+
+async function followUser(login) {
+  const item = $("user-list").querySelector(`[data-login="${login}"]`);
+  const button = item?.querySelector("[data-action='follow']");
+  if (button) { button.disabled = true; button.textContent = "..."; }
+
+  try {
+    await api.ghFetch(`/user/following/${login}`, "PUT");
+
+    const userData = state.notFollowingBack.find((u) => u.login === login);
+    state.notFollowingBack = state.notFollowingBack.filter((u) => u.login !== login);
+    if (userData) {
+      state.following = [...state.following, userData];
+      state.mutuals = [...state.mutuals, userData];
+      await addEvent({ type: "followed", login: userData.login, avatar_url: userData.avatar_url });
+    }
+
+    ui.removeUserItem(login);
+    ui.updateStats(state);
+    ui.refreshEmptyState(state);
+  } catch (e) {
+    if (button) { button.disabled = false; button.textContent = "Seguir"; }
+    ui.showError(`Erro ao seguir ${login}: ${e.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ações em massa
+// ---------------------------------------------------------------------------
+
+function saveMassActionProgress({ actionType, totalCount, pendingLogins }) {
+  return setStorageMulti({ [MASS_ACTION_KEY]: { actionType, totalCount, pendingLogins } });
+}
+
+function clearMassActionProgress() {
+  return removeStorage(MASS_ACTION_KEY);
+}
+
+async function runMassAction({ actionType, items, actionFn, button, otherButton, processingLabel, idleLabel, totalCountOverride }) {
+  if (state.isProcessing) return;
+  state.isProcessing = true;
+  state.cancelMassAction = false;
+
+  const totalCount = totalCountOverride ?? items.length;
+  let done = totalCount - items.length;
+
+  button.disabled = true;
+  otherButton.disabled = true;
+  btnCancelMass.classList.remove("hidden");
+  btnCancelMass.disabled = false;
+  btnCancelMass.textContent = "Cancelar";
+  button.textContent = `${processingLabel} (${done}/${totalCount})`;
+
+  let pending = [...items];
+  await saveMassActionProgress({ actionType, totalCount, pendingLogins: pending.map((u) => u.login) }).catch(() => {});
+
+  for (const user of items) {
+    if (state.cancelMassAction) break;
+    await actionFn(user.login).catch(() => {});
+    done++;
+    pending = pending.slice(1);
+    button.textContent = `${processingLabel} (${done}/${totalCount})`;
+    await saveMassActionProgress({ actionType, totalCount, pendingLogins: pending.map((u) => u.login) }).catch(() => {});
+    const delay = Math.max(api.getRateLimitDelay(), 200);
+    if (delay > 0) await sleep(delay);
+  }
+
+  const wasCancelled = state.cancelMassAction && done < totalCount;
+  state.isProcessing = false;
+  state.cancelMassAction = false;
+  otherButton.disabled = false;
+  btnCancelMass.classList.add("hidden");
+  await clearMassActionProgress().catch(() => {});
+
+  if (wasCancelled) {
+    button.textContent = `Cancelado (${done}/${totalCount})`;
+    await sleep(1500);
+  }
+  button.disabled = false;
+  button.textContent = idleLabel;
+}
+
+async function handleUnfollowAll() {
+  // Exclui whitelisted da ação em massa
+  const toUnfollow = state.unfollowers.filter((u) => !state.whitelist.has(u.login));
+  if (toUnfollow.length === 0) return;
+  const confirmed = await showModal({ count: toUnfollow.length, isFollow: false });
+  if (!confirmed) return;
+  await runMassAction({
+    actionType: "unfollow", items: toUnfollow, actionFn: unfollowUser,
+    button: btnUnfollowAll, otherButton: btnFollowAll,
+    processingLabel: "Processando", idleLabel: "Parar de seguir todos",
+  });
+}
+
+async function handleFollowAll() {
+  if (state.notFollowingBack.length === 0) return;
+  const confirmed = await showModal({ count: state.notFollowingBack.length, isFollow: true });
+  if (!confirmed) return;
+  await runMassAction({
+    actionType: "follow", items: [...state.notFollowingBack], actionFn: followUser,
+    button: btnFollowAll, otherButton: btnUnfollowAll,
+    processingLabel: "Processando", idleLabel: "Seguir todos",
+  });
+}
+
+async function resumePendingMassAction() {
+  const progress = await getStorage(MASS_ACTION_KEY);
+  if (!progress?.pendingLogins?.length) return;
+
+  const { actionType, totalCount, pendingLogins } = progress;
+  const isFollow = actionType === "follow";
+  const sourceList = isFollow ? state.notFollowingBack : state.unfollowers;
+  const pendingSet = new Set(pendingLogins);
+  const items = sourceList.filter((u) => pendingSet.has(u.login));
+
+  if (items.length === 0) { await clearMassActionProgress().catch(() => {}); return; }
+
+  await runMassAction({
+    actionType, items,
+    actionFn: isFollow ? followUser : unfollowUser,
+    button: isFollow ? btnFollowAll : btnUnfollowAll,
+    otherButton: isFollow ? btnUnfollowAll : btnFollowAll,
+    processingLabel: "Retomando",
+    idleLabel: isFollow ? "Seguir todos" : "Parar de seguir todos",
+    totalCountOverride: totalCount,
+  });
+}
+
+function handleCancelMassAction() {
+  state.cancelMassAction = true;
+  btnCancelMass.disabled = true;
+  btnCancelMass.textContent = "Cancelando...";
+}
+
+// ---------------------------------------------------------------------------
+// Event handlers de navegação
+// ---------------------------------------------------------------------------
+
+const TAB_LABELS = {
+  all: "Não te seguem de volta",
+  mutual: "Seguidores mútuos",
+  "not-following-back": "Quem segue você",
+};
+
+function handleTabClick(event) {
+  const tab = event.currentTarget;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+  tab.classList.add("active");
+  state.activeTab = tab.dataset.tab;
+  state.query = "";
+  searchInput.value = "";
+  $("list-label").textContent = TAB_LABELS[state.activeTab] ?? "";
+  ui.renderList(state, makeListActions());
+}
+
+function handleSortChange(event) {
+  state.sortBy = event.target.value;
+  ui.renderList(state, makeListActions());
+}
+
+function handleSearchInput(event) {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    state.query = event.target.value.trim();
+    ui.renderList(state, makeListActions());
+  }, 200);
+}
+
+async function handleRefresh() {
+  api.clearCache();
+  state.user = null;
+  resetViewState();
+  await refreshUserData();
+}
+
+async function handleLogout() {
+  await removeStorage(STORAGE_KEYS.token);
+  await clearMassActionProgress().catch(() => {});
+  api.clearCache();
+  clearAutoRefresh();
+  resetState();
+  state.whitelist = new Set();
+  btnCancelMass.classList.add("hidden");
+  tokenInput.value = "";
+  ui.closeProfilePanel();
+  ui.showToken();
+}
+
+// ---------------------------------------------------------------------------
+// Atalhos de teclado
+// ---------------------------------------------------------------------------
+
+function bindKeyboardShortcuts() {
+  document.addEventListener("keydown", (e) => {
+    // Ignora quando foco está em input/select
+    const tag = document.activeElement?.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+      if (e.key === "Escape") document.activeElement.blur();
+      return;
+    }
+
+    if (e.key === "Escape") {
+      if (ui.isPanelOpen()) { ui.closeProfilePanel(); return; }
+      if (!modalOverlay.classList.contains("hidden")) { modalCancel.click(); return; }
+    }
+
+    // Só ativa atalhos de tab quando a tela principal está visível
+    if ($("screen-main").classList.contains("hidden")) return;
+
+    if (e.key === "1") document.querySelector('.tab[data-tab="all"]')?.click();
+    else if (e.key === "2") document.querySelector('.tab[data-tab="not-following-back"]')?.click();
+    else if (e.key === "3") document.querySelector('.tab[data-tab="mutual"]')?.click();
+    else if (e.key === "/") { e.preventDefault(); searchInput.focus(); }
+    else if (e.key === "h" || e.key === "H") $("nav-tab-history")?.click();
+    else if (e.key === "w" || e.key === "W") $("nav-tab-whitelist")?.click();
+    else if (e.key === "r" || e.key === "R") $("nav-tab-results")?.click();
+    else if (e.key === "t" || e.key === "T") $("btn-theme")?.click();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Conexão
+// ---------------------------------------------------------------------------
+
+const CONNECT_BTN_HTML = `
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M1 5.25A2.25 2.25 0 0 1 3.25 3h9.5A2.25 2.25 0 0 1 15 5.25v5.5A2.25 2.25 0 0 1 12.75 13h-9.5A2.25 2.25 0 0 1 1 10.75ZM3.25 4.5a.75.75 0 0 0-.75.75v.128l5.5 3.589 5.5-3.59V5.25a.75.75 0 0 0-.75-.75Zm9.25 2.867-4.215 2.748a1.75 1.75 0 0 1-1.87-.001L2.5 7.367v3.383c0 .414.336.75.75.75h9.5a.75.75 0 0 0 .75-.75Z"/>
+  </svg> Conectar`;
+
 async function handleConnect() {
   const token = tokenInput.value.trim();
-  if (!token)
-    return ui.showConnectError("Cole seu Personal Access Token acima.");
+  if (!token) return ui.showConnectError("Cole seu Personal Access Token acima.");
 
   btnConnect.disabled = true;
   btnConnect.textContent = "Verificando...";
@@ -128,7 +590,7 @@ async function handleConnect() {
   try {
     state.token = token;
     const user = await api.fetchUser();
-    await api.setStorage("gh_token", token);
+    await setStorage(STORAGE_KEYS.token, token);
     state.user = user;
     ui.showMain();
     await refreshUserData();
@@ -142,386 +604,18 @@ async function handleConnect() {
     }
   } finally {
     btnConnect.disabled = false;
-    btnConnect.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M1 5.25A2.25 2.25 0 0 1 3.25 3h9.5A2.25 2.25 0 0 1 15 5.25v5.5A2.25 2.25 0 0 1 12.75 13h-9.5A2.25 2.25 0 0 1 1 10.75ZM3.25 4.5a.75.75 0 0 0-.75.75v.128l5.5 3.589 5.5-3.59V5.25a.75.75 0 0 0-.75-.75Zm9.25 2.867-4.215 2.748a1.75 1.75 0 0 1-1.87-.001L2.5 7.367v3.383c0 .414.336.75.75.75h9.5a.75.75 0 0 0 .75-.75Z"/>
-      </svg> Conectar`;
+    btnConnect.innerHTML = CONNECT_BTN_HTML;
   }
 }
 
-async function refreshUserData() {
-  ui.showLoading("Obtendo seu perfil...");
-  ui.setProgress(5);
+// ---------------------------------------------------------------------------
+// Registro de eventos
+// ---------------------------------------------------------------------------
 
-  try {
-    if (!state.user) {
-      state.user = await api.fetchUser();
-    }
-
-    setUserHeader(state.user);
-    ui.setProgress(15);
-
-    ui.showLoading("Carregando lista de seguindo...");
-    state.following = await api.fetchFollowing(state.user.login);
-    ui.setProgress(50);
-
-    ui.showLoading("Carregando lista de seguidores...");
-    state.followers = await api.fetchFollowers(state.user.login);
-    ui.setProgress(90);
-
-    ui.showLoading("Calculando...");
-    const [prevU, prevN, prevM, initialized] = await Promise.all([
-      api.getStorage(SNAPSHOT_KEYS.unfollowers),
-      api.getStorage(SNAPSHOT_KEYS.notFollowingBack),
-      api.getStorage(SNAPSHOT_KEYS.mutuals),
-      api.getStorage(SNAPSHOT_KEYS.initialized),
-    ]);
-
-    Object.assign(
-      state,
-      computeRelationshipLists({
-        followers: state.followers,
-        following: state.following,
-      }),
-    );
-
-    // Na primeira vez que a extensão roda (sem baseline ainda), não existe
-    // "novidade" de verdade — é só a fotografia inicial. Marcar tudo como
-    // novo aqui faria a tag "Novo" e o badge aparecerem para todo mundo.
-    if (initialized) {
-      state.newUnfollowers = state.unfollowers.filter(
-        (u) => !(prevU || []).includes(u.login),
-      );
-      state.newNotFollowingBack = state.notFollowingBack.filter(
-        (u) => !(prevN || []).includes(u.login),
-      );
-      state.newMutuals = state.mutuals.filter(
-        (u) => !(prevM || []).includes(u.login),
-      );
-    } else {
-      state.newUnfollowers = [];
-      state.newNotFollowingBack = [];
-      state.newMutuals = [];
-    }
-
-    await Promise.all([
-      api.setStorage(SNAPSHOT_KEYS.unfollowers, state.unfollowers.map((u) => u.login)),
-      api.setStorage(SNAPSHOT_KEYS.notFollowingBack, state.notFollowingBack.map((u) => u.login)),
-      api.setStorage(SNAPSHOT_KEYS.mutuals, state.mutuals.map((u) => u.login)),
-      api.setStorage(SNAPSHOT_KEYS.initialized, true),
-    ]);
-
-    updateBadge(
-      state.newUnfollowers.length +
-        state.newNotFollowingBack.length +
-        state.newMutuals.length,
-    );
-
-    ui.setProgress(100);
-    ui.updateStats(state);
-    ui.renderList(state, { followUser, unfollowUser });
-    ui.showResults();
-    scheduleAutoRefresh();
-    api.persistCache().catch(() => {});
-  } catch (e) {
-    if (e.isAuthError) {
-      ui.showConnectError("Sessão expirada. Seu token foi removido. Faça login novamente.");
-      ui.showToken();
-    } else {
-      ui.showError(e.message);
-    }
-    throw e;
-  }
-}
-
-// Persiste a fila pendente em chrome.storage.local pra sobreviver ao popup
-// fechando no meio do processo. Salva só os logins que ainda faltam — a cada
-// iteração reescrevemos a fila inteira, então reabrir o popup nunca perde a
-// contagem por mais de um item já em voo no momento do fechamento.
-function saveMassActionProgress({ actionType, totalCount, pendingLogins }) {
-  return api.setStorage(MASS_ACTION_KEY, {
-    actionType, // "follow" | "unfollow"
-    totalCount, // tamanho original da fila, pra manter "(done/total)" coerente ao retomar
-    pendingLogins,
-  });
-}
-
-function clearMassActionProgress() {
-  return api.removeStorage(MASS_ACTION_KEY);
-}
-
-async function runMassAction({ actionType, items, actionFn, button, otherButton, processingLabel, idleLabel, totalCountOverride }) {
-  if (state.isProcessing) return; // já tem uma ação em massa rodando, ignora clique duplicado
-
-  state.isProcessing = true;
-  state.cancelMassAction = false;
-
-  // Em uma retomada após reabrir o popup, "items" já é só a fila pendente,
-  // mas a label de progresso precisa continuar contando a partir do total
-  // original (ex: "(7/20)", não "(0/13)"), senão parece que a ação reiniciou.
-  const totalCount = totalCountOverride ?? items.length;
-  let done = totalCount - items.length;
-
-  button.disabled = true;
-  otherButton.disabled = true;
-  btnCancelMass.classList.remove("hidden");
-  btnCancelMass.disabled = false;
-  btnCancelMass.textContent = "Cancelar";
-  button.textContent = `${processingLabel} (${done}/${totalCount})`;
-
-  let pending = [...items];
-
-  // Grava o estado inicial já aqui, antes da primeira chamada de API: cobre
-  // o caso raro de o popup fechar entre o clique e a primeira resposta.
-  await saveMassActionProgress({
-    actionType,
-    totalCount,
-    pendingLogins: pending.map((u) => u.login),
-  }).catch(() => {});
-
-  for (const user of items) {
-    if (state.cancelMassAction) break;
-    await actionFn(user.login).catch(() => {});
-    done++;
-    pending = pending.slice(1);
-    button.textContent = `${processingLabel} (${done}/${totalCount})`;
-    // Salva a cada iteração: se o popup fechar agora, no máximo o item que
-    // já estava em voo precisa ser refeito (a chamada de API é idempotente
-    // o bastante: follow/unfollow repetido não causa efeito colateral extra).
-    await saveMassActionProgress({
-      actionType,
-      totalCount,
-      pendingLogins: pending.map((u) => u.login),
-    }).catch(() => {});
-    const delay = Math.max(api.getRateLimitDelay(), 200);
-    if (delay > 0) await ui.sleep(delay);
-  }
-
-  const wasCancelled = state.cancelMassAction && done < totalCount;
-
-  state.isProcessing = false;
-  state.cancelMassAction = false;
-  otherButton.disabled = false;
-  btnCancelMass.classList.add("hidden");
-
-  // Terminou (ou foi cancelada explicitamente): não há mais nada a resumir.
-  await clearMassActionProgress().catch(() => {});
-
-  if (wasCancelled) {
-    button.textContent = `Cancelado (${done}/${totalCount})`;
-    await ui.sleep(1500);
-  }
-
-  button.disabled = false;
-  button.textContent = idleLabel;
-}
-
-async function handleUnfollowAll() {
-  const toUnfollow = [...state.unfollowers];
-  if (toUnfollow.length === 0) return;
-
-  const confirmed = await showModal({ count: toUnfollow.length, isFollow: false });
-  if (!confirmed) return;
-
-  await runMassAction({
-    actionType: "unfollow",
-    items: toUnfollow,
-    actionFn: unfollowUser,
-    button: btnUnfollowAll,
-    otherButton: btnFollowAll,
-    processingLabel: "Processando",
-    idleLabel: "Parar de seguir todos",
-  });
-}
-
-async function handleFollowAll() {
-  const toFollow = [...state.notFollowingBack];
-  if (toFollow.length === 0) return;
-
-  const confirmed = await showModal({ count: toFollow.length, isFollow: true });
-  if (!confirmed) return;
-
-  await runMassAction({
-    actionType: "follow",
-    items: toFollow,
-    actionFn: followUser,
-    button: btnFollowAll,
-    otherButton: btnUnfollowAll,
-    processingLabel: "Processando",
-    idleLabel: "Seguir todos",
-  });
-}
-
-// Se o popup foi fechado no meio de uma ação em massa, retoma de onde parou.
-// Precisa rodar DEPOIS de refreshUserData() preencher state.following/
-// state.notFollowingBack, porque é ali que resolvemos os logins pendentes
-// de volta pros objetos de usuário (avatar, nome etc.) que actionFn espera.
-async function resumePendingMassAction() {
-  const progress = await api.getStorage(MASS_ACTION_KEY);
-  if (!progress || !progress.pendingLogins || progress.pendingLogins.length === 0) {
-    return;
-  }
-
-  const { actionType, totalCount, pendingLogins } = progress;
-  const isFollow = actionType === "follow";
-
-  // A lista de origem (notFollowingBack para seguir, unfollowers para deixar
-  // de seguir) já reflete o estado atual do GitHub, então usuários que já
-  // saíram dessas listas por outro motivo (ex: já não se aplicam mais) são
-  // simplesmente ignorados aqui — sem erro, sem travar a retomada.
-  const sourceList = isFollow ? state.notFollowingBack : state.unfollowers;
-  const pendingSet = new Set(pendingLogins);
-  const items = sourceList.filter((u) => pendingSet.has(u.login));
-
-  if (items.length === 0) {
-    await clearMassActionProgress().catch(() => {});
-    return;
-  }
-
-  const button = isFollow ? btnFollowAll : btnUnfollowAll;
-  const otherButton = isFollow ? btnUnfollowAll : btnFollowAll;
-
-  await runMassAction({
-    actionType,
-    items,
-    actionFn: isFollow ? followUser : unfollowUser,
-    button,
-    otherButton,
-    processingLabel: "Retomando",
-    idleLabel: isFollow ? "Seguir todos" : "Parar de seguir todos",
-    totalCountOverride: totalCount,
-  });
-}
-
-function handleCancelMassAction() {
-  state.cancelMassAction = true;
-  btnCancelMass.disabled = true;
-  btnCancelMass.textContent = "Cancelando...";
-}
-
-function handleTabClick(event) {
-  const tab = event.currentTarget;
-  document
-    .querySelectorAll(".tab")
-    .forEach((t) => t.classList.remove("active"));
-  tab.classList.add("active");
-  state.activeTab = tab.dataset.tab;
-  state.query = "";
-  searchInput.value = "";
-  $("list-label").textContent =
-    state.activeTab === "mutual"
-      ? "Seguidores mútuos"
-      : state.activeTab === "not-following-back"
-        ? "Quem segue você"
-        : "Não te seguem de volta";
-  ui.renderList(state, { followUser, unfollowUser });
-}
-
-function handleSortChange(event) {
-  state.sortBy = event.target.value;
-  ui.renderList(state, { followUser, unfollowUser });
-}
-
-function handleSearchInput(event) {
-  const value = event.target.value.trim();
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    state.query = value;
-    ui.renderList(state, { followUser, unfollowUser });
-  }, 200);
-}
-
-async function handleRefresh() {
-  api.clearCache();
-  state.user = null;
-  resetViewState();
-  await refreshUserData();
-}
-
-async function handleLogout() {
-  await api.removeStorage("gh_token");
-  await clearMassActionProgress().catch(() => {});
-  api.clearCache();
-  clearAutoRefresh();
-  resetState();
-  updateBadge(0);
-  btnCancelMass.classList.add("hidden");
-  tokenInput.value = "";
-  ui.showToken();
-}
-async function unfollowUser(login) {
-  const item = $("user-list").querySelector(`[data-login="${login}"]`);
-  const button = item?.querySelector("button");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "...";
-  }
-
-  try {
-    await api.ghFetch(`/user/following/${login}`, "DELETE");
-    state.following = state.following.filter((u) => u.login !== login);
-    state.unfollowers = state.unfollowers.filter((u) => u.login !== login);
-    state.mutuals = state.mutuals.filter((u) => u.login !== login);
-
-    if (state.followers.some((u) => u.login === login)) {
-      const user = state.followers.find((u) => u.login === login);
-      if (user) {
-        state.notFollowingBack = [...state.notFollowingBack, user];
-      }
-    }
-
-    ui.removeUserItem(login);
-    ui.updateStats(state);
-    ui.refreshEmptyState(state);
-    ui.refreshUnfollowAllBtn(state);
-  } catch (e) {
-    if (button) {
-      button.disabled = false;
-      button.textContent = "Parar de seguir";
-    }
-    ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
-  }
-}
-
-async function followUser(login) {
-  const item = $("user-list").querySelector(`[data-login="${login}"]`);
-  const button = item?.querySelector("button");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "...";
-  }
-
-  try {
-    await api.ghFetch(`/user/following/${login}`, "PUT");
-    const followUserData = state.notFollowingBack.find(
-      (u) => u.login === login,
-    );
-    state.notFollowingBack = state.notFollowingBack.filter(
-      (u) => u.login !== login,
-    );
-    if (followUserData) {
-      state.following = [...state.following, followUserData];
-      state.mutuals = [...state.mutuals, followUserData];
-    }
-
-    ui.removeUserItem(login);
-    ui.updateStats(state);
-    ui.refreshEmptyState(state);
-  } catch (e) {
-    if (button) {
-      button.disabled = false;
-      button.textContent = "Seguir";
-    }
-    ui.showError(`Erro ao seguir ${login}: ${e.message}`);
-  }
-}
 function bindEventListeners() {
   btnConnect.addEventListener("click", handleConnect);
   tokenInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleConnect();
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleConnect(); }
   });
   btnCreateToken.addEventListener("click", () => {
     window.open(
@@ -529,42 +623,90 @@ function bindEventListeners() {
       "_blank",
     );
   });
+
   btnUnfollowAll.addEventListener("click", handleUnfollowAll);
   btnFollowAll.addEventListener("click", handleFollowAll);
   btnCancelMass.addEventListener("click", handleCancelMassAction);
-  document
-    .querySelectorAll(".tab")
-    .forEach((tab) => tab.addEventListener("click", handleTabClick));
+
+  document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", handleTabClick));
   searchInput.addEventListener("input", handleSearchInput);
   sortSelect.addEventListener("change", handleSortChange);
   $("btn-refresh").addEventListener("click", handleRefresh);
   $("btn-logout").addEventListener("click", handleLogout);
+
+  // Tema
+  $("btn-theme").addEventListener("click", async () => {
+    currentTheme = toggleTheme(currentTheme);
+    applyTheme(currentTheme);
+    await saveTheme(currentTheme);
+  });
+
+  // Navegação entre sub-telas
+  $("nav-tab-results").addEventListener("click", () => showMainTab("results"));
+  $("nav-tab-history").addEventListener("click", () => showMainTab("history"));
+  $("nav-tab-whitelist").addEventListener("click", () => showMainTab("whitelist"));
+
+  // Limpar histórico
+  $("btn-clear-history").addEventListener("click", async () => {
+    await clearHistory();
+    renderHistoryTab();
+  });
+
+  // Painel de perfil — fechar
+  $("profile-close").addEventListener("click", () => ui.closeProfilePanel());
+  $("profile-overlay").addEventListener("click", () => ui.closeProfilePanel());
+
+  bindKeyboardShortcuts();
 }
 
+// ---------------------------------------------------------------------------
+// Inicialização
+// ---------------------------------------------------------------------------
+
 async function init() {
+  currentTheme = await initTheme();
   bindEventListeners();
   await api.initCache();
-  const stored = await api.getStorage("gh_token");
-  if (stored) {
-    state.token = stored;
-    try {
-      state.user = await api.fetchUser();
-      ui.showMain();
-      await refreshUserData();
-      // Não bloqueia a tela: se houver fila pendente, ela continua em segundo
-      // plano enquanto o usuário já vê a lista atualizada.
-      resumePendingMassAction().catch(() => {});
-    } catch (e) {
-      state.token = null;
-      if (e.isAuthError) {
-        ui.showConnectError("Token salvo expirou ou foi revogado. Gere um novo.");
-        ui.showToken();
-      } else {
-        ui.showError(e.message);
-      }
+
+  // Carrega whitelist antes de qualquer render
+  state.whitelist = await loadWhitelist();
+
+  const token = await getStorage(STORAGE_KEYS.token);
+  if (!token) { ui.showToken(); return; }
+
+  state.token = token;
+
+  try {
+    state.user = await api.fetchUser();
+    ui.showMain();
+
+    const cached = await getStorage(CACHED_LISTS_KEY);
+    if (cached?.unfollowers) {
+      Object.assign(state, {
+        following: cached.following || [],
+        followers: cached.followers || [],
+        unfollowers: cached.unfollowers,
+        notFollowingBack: cached.notFollowingBack || [],
+        mutuals: cached.mutuals || [],
+        newUnfollowers: [],
+        newNotFollowingBack: [],
+        newMutuals: [],
+      });
+      ui.updateStats(state);
+      ui.renderList(state, makeListActions());
+      ui.showResults();
     }
-  } else {
-    ui.showToken();
+
+    await refreshUserData({ silent: !!cached });
+    resumePendingMassAction().catch(() => {});
+  } catch (e) {
+    state.token = null;
+    if (e.isAuthError) {
+      ui.showConnectError("Token salvo expirou ou foi revogado. Gere um novo.");
+      ui.showToken();
+    } else {
+      ui.showError(e.message);
+    }
   }
 }
 

@@ -1,154 +1,135 @@
 import { state } from "./store.js";
+import { removeStorage } from "./storage.js";
 import * as cache from "./cache.js";
+import { STORAGE_KEYS, GITHUB_API, FETCH_TIMEOUT_MS, MAX_RETRIES, PAGE_SIZE } from "./constants.js";
 
-const GH = "https://api.github.com";
-const FETCH_TIMEOUT = 30000;
+// Re-exporta helpers de storage para que app.js não precise importar dois módulos
+export { getStorage, setStorage, setStorageMulti, removeStorage } from "./storage.js";
+export { loadFromStorage as initCache, saveToStorage as persistCache, clear as clearCache } from "./cache.js";
 
-const RETRY_STATUSES = new Set([429, 502, 503, 504]);
-const MAX_RETRIES = 3;
+// ---------------------------------------------------------------------------
+// Rate limit tracking
+// ---------------------------------------------------------------------------
 
 const rateLimit = {
-  remaining: null,
-  reset: null,
-  limit: null,
+  remaining: /** @type {number|null} */ (null),
+  reset: /** @type {number|null} */ (null),
 };
-
-let lastScopes = null;
 
 function updateRateLimit(headers) {
   const rem = headers.get("X-RateLimit-Remaining");
   const reset = headers.get("X-RateLimit-Reset");
-  const limit = headers.get("X-RateLimit-Limit");
   if (rem !== null) rateLimit.remaining = parseInt(rem, 10);
   if (reset !== null) rateLimit.reset = parseInt(reset, 10);
-  if (limit !== null) rateLimit.limit = parseInt(limit, 10);
 }
 
+/**
+ * Devolve quantos ms esperar antes da próxima chamada de API.
+ * Retorna 0 quando há margem confortável.
+ */
 export function getRateLimitDelay() {
   if (rateLimit.remaining === null || rateLimit.reset === null) return 300;
-  const now = Math.floor(Date.now() / 1000);
-  const secondsUntilReset = Math.max(0, rateLimit.reset - now);
+  const secondsUntilReset = Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000));
   if (rateLimit.remaining <= 10 && secondsUntilReset > 0) {
-    return Math.min(secondsUntilReset * 1000, 60000);
+    return Math.min(secondsUntilReset * 1000, 60_000);
   }
-  if (rateLimit.remaining <= 100) {
-    return 500;
-  }
+  if (rateLimit.remaining <= 100) return 500;
   return 0;
 }
 
-export function getRateLimitInfo() {
-  return { ...rateLimit };
-}
+// ---------------------------------------------------------------------------
+// Core fetch com retry e tratamento de erros
+// ---------------------------------------------------------------------------
 
-export function getTokenScopes() {
-  return lastScopes;
-}
-
+/**
+ * Faz uma chamada autenticada à API do GitHub com retry automático.
+ * @param {string} path  Caminho relativo (ex: "/user/following/octocat")
+ * @param {"GET"|"PUT"|"DELETE"} method
+ * @returns {Promise<unknown>}
+ */
 export async function ghFetch(path, method = "GET") {
   let attempt = 0;
+
   while (true) {
     let res;
     try {
-      res = await fetch(`${GH}${path}`, {
+      res = await fetch(`${GITHUB_API}${path}`, {
         method,
-        headers: {
-          Authorization: `Bearer ${state.token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-        signal: AbortSignal.timeout(FETCH_TIMEOUT),
+        headers: buildHeaders(),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
     } catch (e) {
-      if (e.name === "AbortError") {
-        throw new Error("A requisição excedeu o tempo limite. Verifique sua conexão.");
-      }
-      if (e instanceof TypeError && e.message.includes("fetch")) {
-        throw new Error("Sem conexão com a internet. Verifique sua rede.");
-      }
-      throw e;
+      throw wrapNetworkError(e);
     }
-    lastScopes = res.headers.get("X-OAuth-Scopes") || null;
+
     updateRateLimit(res.headers);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        await removeStorage("gh_token");
-        state.token = null;
-        const err = new Error("Sessão expirada. Faça login novamente.");
-        err.isAuthError = true;
-        throw err;
-      }
-      const retryable = new Set([429, 500, 502, 503, 504]).has(res.status);
-      if (retryable && attempt < MAX_RETRIES) {
-        let delay;
-        if (res.status === 429) {
-          const retryAfter = parseInt(
-            res.headers.get("Retry-After") || "1",
-            10,
-          );
-          delay = Math.max(retryAfter * 1000, 1000);
-        } else {
-          delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-        }
-        await new Promise((r) => setTimeout(r, delay));
-        attempt++;
-        continue;
-      }
-      const err = new Error(errData.message || `HTTP ${res.status}`);
-      throw err;
+
+    if (res.ok || res.status === 204) {
+      return method === "DELETE" || res.status === 204 ? null : res.json();
     }
-    return method === "DELETE" || res.status === 204 ? null : await res.json();
+
+    if (res.status === 401) {
+      await removeStorage(STORAGE_KEYS.token);
+      state.token = null;
+      throw authError("Sessão expirada. Faça login novamente.");
+    }
+
+    const retryable = [429, 500, 502, 503, 504].includes(res.status);
+    if (retryable && attempt < MAX_RETRIES) {
+      const delay = res.status === 429
+        ? Math.max(parseInt(res.headers.get("Retry-After") || "1", 10) * 1000, 1000)
+        : Math.min(1000 * 2 ** attempt, 10_000);
+      await sleep(delay);
+      attempt++;
+      continue;
+    }
+
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `HTTP ${res.status}`);
   }
 }
 
+// ---------------------------------------------------------------------------
+// Paginação com ETag cache
+// ---------------------------------------------------------------------------
+
+/**
+ * Busca uma página específica com suporte a ETag (304 Not Modified).
+ */
 async function fetchPage(path, page) {
   const cached = cache.get(path, page);
-  const url = `${GH}${path}?per_page=100&page=${page}`;
-  const headers = {
-    Authorization: `Bearer ${state.token}`,
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-  if (cached?.etag) {
-    headers["If-None-Match"] = cached.etag;
+  const url = `${GITHUB_API}${path}?per_page=${PAGE_SIZE}&page=${page}`;
+  const headers = buildHeaders();
+  if (cached?.etag) headers["If-None-Match"] = cached.etag;
+
+  let res;
+  try {
+    res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch (e) {
+    throw wrapNetworkError(e);
   }
 
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+  updateRateLimit(res.headers);
 
-  if (res.status === 304 && cached) {
-    return cached.data;
-  }
+  if (res.status === 304 && cached) return cached.data;
 
   if (!res.ok) {
+    if (res.status === 401) throw authError("Sessão expirada. Faça login novamente.");
     const errData = await res.json().catch(() => ({}));
-    const err = new Error(errData.message || `HTTP ${res.status}`);
-    if (res.status === 401) {
-      err.isAuthError = true;
-    }
-    throw err;
+    throw new Error(errData.message || `HTTP ${res.status}`);
   }
 
   const data = await res.json();
   const etag = res.headers.get("ETag");
-  if (etag) {
-    cache.set(path, page, data, etag);
-  }
+  if (etag) cache.set(path, page, data, etag);
   return data;
 }
 
-export async function fetchUser() {
-  return ghFetch("/user");
-}
-
-export async function fetchFollowing(login) {
-  return fetchAllPages(`/users/${login}/following`);
-}
-
-export async function fetchFollowers(login) {
-  return fetchAllPages(`/users/${login}/followers`);
-}
-
+/**
+ * Itera todas as páginas de um endpoint paginado do GitHub.
+ * @param {string} path
+ * @param {{ onProgress?: (page: number) => void }} [opts]
+ */
 export async function fetchAllPages(path, { onProgress } = {}) {
   const results = [];
   let page = 1;
@@ -157,52 +138,56 @@ export async function fetchAllPages(path, { onProgress } = {}) {
     if (!data || data.length === 0) break;
     results.push(...data);
     onProgress?.(page);
-    if (data.length < 100) break;
+    if (data.length < PAGE_SIZE) break;
     page++;
   }
   return results;
 }
 
-export async function fetchBoth(login, { onPageFollowing, onPageFollowers } = {}) {
-  const path = `/users/${login}`;
-  const [followingRes, followersRes] = await Promise.allSettled([
-    fetchAllPages(`${path}/following`, { onProgress: onPageFollowing }),
-    fetchAllPages(`${path}/followers`, { onProgress: onPageFollowers }),
-  ]);
+// ---------------------------------------------------------------------------
+// Endpoints de domínio
+// ---------------------------------------------------------------------------
 
+export function fetchUser() {
+  return ghFetch("/user");
+}
+
+export function fetchFollowing(login) {
+  return fetchAllPages(`/users/${login}/following`);
+}
+
+export function fetchFollowers(login) {
+  return fetchAllPages(`/users/${login}/followers`);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers internos
+// ---------------------------------------------------------------------------
+
+function buildHeaders() {
   return {
-    following: followingRes.status === "fulfilled" ? followingRes.value : [],
-    followers: followersRes.status === "fulfilled" ? followersRes.value : [],
-    errors: [followingRes, followersRes]
-      .filter((r) => r.status === "rejected")
-      .map((r) => r.reason),
+    Authorization: `Bearer ${state.token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
 }
 
-export function clearCache() {
-  cache.clear();
+function authError(message) {
+  const err = new Error(message);
+  err.isAuthError = true;
+  return err;
 }
 
-export async function initCache() {
-  await cache.loadFromStorage();
+function wrapNetworkError(e) {
+  if (e.name === "AbortError" || e.name === "TimeoutError") {
+    return new Error("A requisição excedeu o tempo limite. Verifique sua conexão.");
+  }
+  if (e instanceof TypeError) {
+    return new Error("Sem conexão com a internet. Verifique sua rede.");
+  }
+  return e;
 }
 
-export async function persistCache() {
-  await cache.saveToStorage();
-}
-
-export function getStorage(key) {
-  return new Promise((resolve) =>
-    chrome.storage.local.get([key], (res) => resolve(res[key] || null)),
-  );
-}
-
-export function setStorage(key, val) {
-  return new Promise((resolve) =>
-    chrome.storage.local.set({ [key]: val }, resolve),
-  );
-}
-
-export function removeStorage(key) {
-  return new Promise((resolve) => chrome.storage.local.remove([key], resolve));
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
