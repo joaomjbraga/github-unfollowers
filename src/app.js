@@ -102,7 +102,7 @@ function showMainTab(tab) {
   $("loading-state").classList.add("hidden");
   $("error-state").classList.add("hidden");
 
-  setTabSelected($(".nav-bar"), $(`nav-tab-${tab}`));
+  setTabSelected($("nav-bar"), $(`nav-tab-${tab}`));
 
   if (tab === "history") renderHistoryTab();
   if (tab === "whitelist") renderWhitelistTab();
@@ -361,8 +361,7 @@ async function unfollowUser(login) {
 
     ui.removeUserItem(login);
     ui.updateStats(state);
-    ui.refreshEmptyState(state);
-    ui.refreshUnfollowAllBtn(state);
+    ui.renderList(state, makeListActions());
     return true;
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
@@ -389,7 +388,7 @@ async function followUser(login) {
 
     ui.removeUserItem(login);
     ui.updateStats(state);
-    ui.refreshEmptyState(state);
+    ui.renderList(state, makeListActions());
     return true;
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Seguir"; }
