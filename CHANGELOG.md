@@ -6,6 +6,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.3.1] - 2026-06-28
+
+### Adicionado
+
+- **Export/Import de dados** — whitelist e histórico agora podem ser exportados e importados como arquivo JSON pelo menu (`⋯`).
+- **Menu dropdown** — botões de tema, recarregar e desconectar foram movidos para um menu suspenso estilo iOS, acessível pelo ícone `⋯` no header, liberando espaço visual.
+
+### Alterado
+
+- **Texto do passo 1 do token** — agora explica que os escopos `read:user` + `user:follow` já vêm pré-selecionados na página de criação do token.
+- **Atalho de teclado T** — alternar tema agora funciona independentemente do botão `btn-theme` (que foi removido).
+
+### Corrigido
+
+- **Crash na aba whitelist** — seletor `$(".nav-bar")` alterado para `$("nav-bar")` (usava classe em vez de ID), que causava erro ao abrir a aba whitelist.
+
+---
+
 ## [1.3.0] - 2026-06-27
 
 ### Adicionado
