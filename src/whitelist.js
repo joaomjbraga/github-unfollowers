@@ -5,7 +5,8 @@
 
 import { getStorage, setStorage } from "./storage.js";
 
-const STORAGE_KEY = "whitelist_v1";
+export const WHITELIST_STORAGE_KEY = "whitelist_v1";
+const STORAGE_KEY = WHITELIST_STORAGE_KEY;
 
 /** @returns {Promise<Set<string>>} */
 export async function loadWhitelist() {

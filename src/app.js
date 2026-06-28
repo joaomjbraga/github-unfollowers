@@ -5,8 +5,8 @@ import { setStorageMulti, removeStorage, getStorage, setStorage } from "./storag
 import * as ui from "./ui.js";
 import { computeRelationshipLists, sleep } from "./utils.js";
 import { STORAGE_KEYS, AUTO_REFRESH_MS } from "./constants.js";
-import { addEvent, loadHistory, clearHistory } from "./history.js";
-import { loadWhitelist, addToWhitelist, removeFromWhitelist } from "./whitelist.js";
+import { addEvent, loadHistory, clearHistory, HISTORY_STORAGE_KEY } from "./history.js";
+import { loadWhitelist, addToWhitelist, removeFromWhitelist, WHITELIST_STORAGE_KEY } from "./whitelist.js";
 import { initTheme, toggleTheme, applyTheme, saveTheme } from "./theme.js";
 
 const { snapshots: SNAP, pending: PEND, cachedLists: CACHED_LISTS_KEY, massActionProgress: MASS_ACTION_KEY } = STORAGE_KEYS;
@@ -126,6 +126,46 @@ async function renderWhitelistTab() {
       renderWhitelistTab();
       ui.renderList(state, makeListActions());
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Modal de confirmação genérico
+// ---------------------------------------------------------------------------
+
+function showConfirmModal({ title, message, confirmText, confirmClass = "btn-primary" }) {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalText.innerHTML = message;
+    modalConfirm.textContent = confirmText;
+    modalConfirm.className = `btn ${confirmClass} modal-confirm`;
+    if (modalIcon) modalIcon.style.color = "";
+
+    modalOverlay.classList.remove("hidden");
+    modalConfirm.disabled = false;
+    modalCancel.disabled = false;
+
+    const focusable = [modalCancel, modalConfirm];
+    const trapTab = (e) => {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      const idx = focusable.indexOf(document.activeElement);
+      const next = focusable[(idx + (e.shiftKey ? -1 : 1) + 2) % 2];
+      next.focus();
+    };
+    document.addEventListener("keydown", trapTab);
+    modalCancel.focus();
+
+    const cleanup = () => {
+      modalConfirm.removeEventListener("click", onConfirm);
+      modalCancel.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", trapTab);
+      modalOverlay.classList.add("hidden");
+    };
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    modalConfirm.addEventListener("click", onConfirm);
+    modalCancel.addEventListener("click", onCancel);
   });
 }
 
@@ -564,6 +604,76 @@ async function handleLogout() {
 }
 
 // ---------------------------------------------------------------------------
+// Export / Import
+// ---------------------------------------------------------------------------
+
+async function handleExport() {
+  const [whitelistRaw, historyRaw] = await Promise.all([
+    getStorage(WHITELIST_STORAGE_KEY),
+    getStorage(HISTORY_STORAGE_KEY),
+  ]);
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    whitelist: Array.isArray(whitelistRaw) ? whitelistRaw : [],
+    history: Array.isArray(historyRaw) ? historyRaw : [],
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `github-unfollowers-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function handleImport() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!data || data.version !== 1 || !Array.isArray(data.whitelist) || !Array.isArray(data.history)) {
+        ui.showError("Formato de ficheiro inválido.");
+        return;
+      }
+
+      const confirmed = await showConfirmModal({
+        title: "Importar dados?",
+        message: `Importar <strong>${data.whitelist.length}</strong> utilizador(es) na whitelist e <strong>${data.history.length}</strong> evento(s) de histórico.<br><br>Os dados atuais serão substituídos.`,
+        confirmText: "Sim, importar",
+      });
+      if (!confirmed) return;
+
+      await Promise.all([
+        setStorage(WHITELIST_STORAGE_KEY, data.whitelist),
+        setStorage(HISTORY_STORAGE_KEY, data.history),
+      ]);
+
+      state.whitelist = new Set(data.whitelist);
+
+      if (state.user) {
+        ui.updateStats(state);
+        ui.renderList(state, makeListActions());
+
+        if (!$("whitelist-state").classList.contains("hidden")) renderWhitelistTab();
+        if (!$("history-state").classList.contains("hidden")) renderHistoryTab();
+      }
+    } catch (e) {
+      ui.showError("Erro ao importar: " + e.message);
+    }
+  };
+  input.click();
+}
+
+// ---------------------------------------------------------------------------
 // Atalhos de teclado
 // ---------------------------------------------------------------------------
 
@@ -672,6 +782,8 @@ function bindEventListeners() {
   sortSelect.addEventListener("change", handleSortChange);
   $("btn-refresh").addEventListener("click", handleRefresh);
   $("btn-logout").addEventListener("click", handleLogout);
+  $("btn-export").addEventListener("click", handleExport);
+  $("btn-import").addEventListener("click", handleImport);
 
   // Tema
   $("btn-theme").addEventListener("click", async () => {

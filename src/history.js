@@ -5,7 +5,8 @@
 
 import { getStorage, setStorage } from "./storage.js";
 
-const STORAGE_KEY = "event_history_v1";
+export const HISTORY_STORAGE_KEY = "event_history_v1";
+const STORAGE_KEY = HISTORY_STORAGE_KEY;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 /**
