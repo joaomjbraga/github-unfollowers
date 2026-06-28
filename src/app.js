@@ -687,6 +687,7 @@ function bindKeyboardShortcuts() {
     }
 
     if (e.key === "Escape") {
+      closeMenu();
       if (ui.isPanelOpen()) { ui.closeProfilePanel(); return; }
       if (!modalOverlay.classList.contains("hidden")) { modalCancel.click(); return; }
     }
@@ -715,7 +716,11 @@ function bindKeyboardShortcuts() {
     else if (e.key === "h" || e.key === "H") $("nav-tab-history")?.click();
     else if (e.key === "w" || e.key === "W") $("nav-tab-whitelist")?.click();
     else if (e.key === "r" || e.key === "R") $("nav-tab-results")?.click();
-    else if (e.key === "t" || e.key === "T") $("btn-theme")?.click();
+    else if (e.key === "t" || e.key === "T") {
+      currentTheme = toggleTheme(currentTheme);
+      applyTheme(currentTheme);
+      saveTheme(currentTheme);
+    }
   });
 }
 
@@ -758,6 +763,25 @@ async function handleConnect() {
 }
 
 // ---------------------------------------------------------------------------
+// Menu dropdown
+// ---------------------------------------------------------------------------
+
+function toggleMenu() {
+  const dropdown = $("menu-dropdown");
+  if (dropdown.classList.contains("open")) {
+    closeMenu();
+  } else {
+    dropdown.classList.add("open");
+    $("menu-overlay").classList.remove("hidden");
+  }
+}
+
+function closeMenu() {
+  $("menu-dropdown").classList.remove("open");
+  $("menu-overlay").classList.add("hidden");
+}
+
+// ---------------------------------------------------------------------------
 // Registro de eventos
 // ---------------------------------------------------------------------------
 
@@ -780,17 +804,21 @@ function bindEventListeners() {
   document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", handleTabClick));
   searchInput.addEventListener("input", handleSearchInput);
   sortSelect.addEventListener("change", handleSortChange);
-  $("btn-refresh").addEventListener("click", handleRefresh);
-  $("btn-logout").addEventListener("click", handleLogout);
-  $("btn-export").addEventListener("click", handleExport);
-  $("btn-import").addEventListener("click", handleImport);
 
-  // Tema
-  $("btn-theme").addEventListener("click", async () => {
+  // Menu dropdown
+  $("btn-menu").addEventListener("click", toggleMenu);
+  $("menu-overlay").addEventListener("click", closeMenu);
+
+  $("menu-theme").addEventListener("click", async () => {
+    closeMenu();
     currentTheme = toggleTheme(currentTheme);
     applyTheme(currentTheme);
     await saveTheme(currentTheme);
   });
+  $("menu-refresh").addEventListener("click", () => { closeMenu(); handleRefresh(); });
+  $("menu-export").addEventListener("click", () => { closeMenu(); handleExport(); });
+  $("menu-import").addEventListener("click", () => { closeMenu(); handleImport(); });
+  $("menu-logout").addEventListener("click", () => { closeMenu(); handleLogout(); });
 
   // Navegação entre sub-telas
   $("nav-tab-results").addEventListener("click", () => showMainTab("results"));
