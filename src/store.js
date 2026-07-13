@@ -22,6 +22,7 @@ const INITIAL_STATE = {
   cancelMassAction: false,
   isProcessing: false,
   unfollowable: new Set(),
+  checkedProactive: new Set(),
   showUnfollowable: false,
 };
 

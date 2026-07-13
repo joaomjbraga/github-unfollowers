@@ -9,7 +9,7 @@ import { addEvent, loadHistory, clearHistory, HISTORY_STORAGE_KEY } from "./hist
 import { loadWhitelist, addToWhitelist, removeFromWhitelist, WHITELIST_STORAGE_KEY } from "./whitelist.js";
 import { initTheme, toggleTheme, applyTheme, saveTheme } from "./theme.js";
 
-const { snapshots: SNAP, pending: PEND, cachedLists: CACHED_LISTS_KEY, massActionProgress: MASS_ACTION_KEY, unfollowableLogins: UNFOLLOWABLE_KEY } = STORAGE_KEYS;
+const { snapshots: SNAP, pending: PEND, cachedLists: CACHED_LISTS_KEY, massActionProgress: MASS_ACTION_KEY, unfollowableLogins: UNFOLLOWABLE_KEY, checkedProactive: CHECKED_KEY } = STORAGE_KEYS;
 
 // ---------------------------------------------------------------------------
 // Elementos DOM
@@ -73,6 +73,63 @@ async function addUnfollowable(logins) {
 async function loadUnfollowable() {
   const raw = await getStorage(UNFOLLOWABLE_KEY);
   state.unfollowable = new Set(Array.isArray(raw) ? raw : []);
+}
+
+async function loadCheckedProactive() {
+  const raw = await getStorage(CHECKED_KEY);
+  state.checkedProactive = new Set(Array.isArray(raw) ? raw : []);
+}
+
+// ---------------------------------------------------------------------------
+// Detecção proativa de perfis privados (GET /users/{login})
+// ---------------------------------------------------------------------------
+
+const DETECT_BATCH_SIZE = 10;
+const DETECT_BATCH_DELAY_MS = 5000;
+
+async function detectUnfollowableProactive() {
+  if (!state.token) return;
+
+  const candidates = state.notFollowingBack.filter(
+    (u) => !state.unfollowable.has(u.login) && !state.checkedProactive.has(u.login),
+  );
+  if (candidates.length === 0) return;
+
+  const total = candidates.length;
+  ui.showDetectionProgress(total);
+
+  for (let i = 0; i < candidates.length; i += DETECT_BATCH_SIZE) {
+    const batch = candidates.slice(i, i + DETECT_BATCH_SIZE);
+
+    for (const user of batch) {
+      try {
+        const data = await api.ghFetch(`/users/${user.login}`);
+        if (data?.user_view_type === "private") {
+          await addUnfollowable([user.login]);
+        }
+      } catch (e) {
+        if (e.httpStatus === 403 || e.httpStatus === 429) {
+          await setStorage(CHECKED_KEY, [...state.checkedProactive]);
+          ui.hideDetectionProgress();
+          return;
+        }
+      }
+      state.checkedProactive.add(user.login);
+    }
+
+    await setStorage(CHECKED_KEY, [...state.checkedProactive]);
+    const remaining = Math.max(0, total - (i + batch.length));
+    if (remaining > 0) ui.showDetectionProgress(remaining);
+
+    if (i + DETECT_BATCH_SIZE < candidates.length) {
+      const delay = api.getRateLimitDelay() || DETECT_BATCH_DELAY_MS;
+      await sleep(delay);
+    }
+  }
+
+  ui.hideDetectionProgress();
+  ui.updateStats(state);
+  ui.renderList(state, makeListActions());
 }
 
 // ---------------------------------------------------------------------------
@@ -240,10 +297,25 @@ function makeListActions() {
   };
 }
 
-/** Wrapper: follow individual atualiza state imediatamente */
+/** Wrapper: follow individual com verificação pós-follow */
 async function handleFollowUser(login) {
   const succeeded = await followUser(login);
   if (!succeeded) return;
+
+  // Verifica se o follow realmente funcionou (204 pode ser pendente de perfil privado)
+  try {
+    await api.ghFetch(`/user/following/${login}`);
+    // 200 → follow confirmado
+  } catch (e) {
+    if (e.httpStatus === 404) {
+      // 404 → não está seguindo → perfil privado / inacessível
+      await addUnfollowable([login]);
+      ui.updateStats(state);
+      ui.renderList(state, makeListActions());
+      return;
+    }
+    // Outro erro → ignora, assume follow ok
+  }
 
   const userData = state.notFollowingBack.find((u) => u.login === login);
   state.notFollowingBack = state.notFollowingBack.filter((u) => u.login !== login);
@@ -396,6 +468,7 @@ async function refreshUserData({ silent = false } = {}) {
     }
     ui.updateStats(state);
     ui.renderList(state, makeListActions());
+    detectUnfollowableProactive().catch(() => {});
     api.persistCache().catch(() => {});
   } catch (e) {
     if (e.isAuthError) {
@@ -668,12 +741,14 @@ async function handleRefresh() {
 async function handleLogout() {
   await removeStorage(STORAGE_KEYS.token);
   await removeStorage(UNFOLLOWABLE_KEY);
+  await removeStorage(CHECKED_KEY);
   await clearMassActionProgress().catch(() => {});
   api.clearCache();
   clearAutoRefresh();
   resetState();
   state.whitelist = new Set();
   state.unfollowable = new Set();
+  state.checkedProactive = new Set();
   state.showUnfollowable = false;
   btnCancelMass.classList.add("hidden");
   tokenInput.value = "";
@@ -935,6 +1010,7 @@ async function init() {
   // Carrega whitelist e unfollowable antes de qualquer render
   state.whitelist = await loadWhitelist();
   await loadUnfollowable();
+  await loadCheckedProactive();
 
   const token = await getStorage(STORAGE_KEYS.token);
   if (!token) { ui.showToken(); return; }

@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   cachedLists: "cached_lists",
   massActionProgress: "mass_action_progress",
   unfollowableLogins: "unfollowable_logins_v1",
+  checkedProactive: "checked_proactive_v1",
 
   snapshots: {
     unfollowers: "snapshot_unfollowers",

@@ -623,6 +623,19 @@ export function refreshUnfollowAllBtn(state) {
     state.activeTab !== "all" || state.unfollowers.length === 0 ? "none" : "";
 }
 
+export function showDetectionProgress(remaining) {
+  const banner = $("unfollowable-banner");
+  const bannerText = $("unfollowable-text");
+  if (!banner || !bannerText) return;
+  bannerText.textContent = `Verificando ${remaining} perfis restantes...`;
+  $("btn-unfollowable-toggle").classList.add("hidden");
+  banner.classList.remove("hidden");
+}
+
+export function hideDetectionProgress() {
+  $("btn-unfollowable-toggle")?.classList.remove("hidden");
+}
+
 // ---------------------------------------------------------------------------
 // Ícones SVG inline
 // ---------------------------------------------------------------------------

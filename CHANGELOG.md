@@ -16,11 +16,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 - **Persistência** — contas inacessíveis são salvas no `chrome.storage.local` e sobrevivem a refresh/fechamento do popup.
 - **Contador dinâmico** — badge da aba "Não sigo" subtrai contas inacessíveis quando ocultas, refletindo o número real de ações disponíveis.
 - **Verificação pós-follow** — após "Seguir todos", verifica quais users foram adicionados a `state.following` para identificar os inacessíveis (perfis privados retornam 204 mas ficam pendentes).
+- **Detecção proativa de perfis privados** — na abertura do popup, verifica users em `notFollowingBack` via `GET /users/{login}` em batches silenciosos. Perfis com `user_view_type === "private"` são marcados como inacessíveis automaticamente. Progresso salvo no storage para retomada.
 
 ### Alterado
 
 - **`followUser()`** — retorna `true/false` sem alterar state; o caller decide quando atualizar (individual vs massa).
 - **`handleFollowAll()`** — após conclusão, identifica contas não adicionadas a `state.following` como inacessíveis e move as confirmadas para `following/mutuals`.
+- **`handleFollowUser()`** — após follow individual, verifica via `GET /user/following/{login}`. Se 404, marca como inacessível e mantém na lista (não move para following).
 - **`resumePendingMassAction()`** — aplica a mesma lógica de detecção ao retomar ação em massa.
 - **Botão "Seguir todos"** — oculto quando todos os usuários da aba são inacessíveis.
 
