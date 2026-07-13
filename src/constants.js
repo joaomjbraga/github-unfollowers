@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   pageCache: "page_cache_v2",
   cachedLists: "cached_lists",
   massActionProgress: "mass_action_progress",
+  unfollowableLogins: "unfollowable_logins_v1",
 
   snapshots: {
     unfollowers: "snapshot_unfollowers",

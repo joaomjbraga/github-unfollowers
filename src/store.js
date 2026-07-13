@@ -21,6 +21,8 @@ const INITIAL_STATE = {
   query: "",
   cancelMassAction: false,
   isProcessing: false,
+  unfollowable: new Set(),
+  showUnfollowable: false,
 };
 
 export const state = { ...INITIAL_STATE };

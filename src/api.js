@@ -85,7 +85,9 @@ export async function ghFetch(path, method = "GET") {
     }
 
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || `HTTP ${res.status}`);
+    const err = new Error(errData.message || `HTTP ${res.status}`);
+    err.httpStatus = res.status;
+    throw err;
   }
 }
 

@@ -92,14 +92,15 @@ class VirtualScroll {
   }
 
   populate(node, user) {
-    const { isMutual, isNotFollowingBack, followUser, unfollowUser, onOpenProfile, whitelist } = this.actions;
+    const { isMutual, isNotFollowingBack, followUser, unfollowUser, onOpenProfile, whitelist, unfollowableSet } = this.actions;
     const isNew = this.newSet.has(user.login);
     const isWhitelisted = whitelist?.has(user.login);
+    const isUnfollowable = unfollowableSet?.has(user.login);
 
     node.className = `user-item virtual${isNew ? " is-new" : ""}`;
     node.dataset.login = user.login;
     node.style.cssText = `position:absolute;left:0;right:0;height:${ITEM_HEIGHT_PX}px`;
-    node.innerHTML = buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted });
+    node.innerHTML = buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted, isUnfollowable });
     bindUserItemEvents(node, user, { isMutual, isNotFollowingBack, followUser, unfollowUser, onOpenProfile, whitelist });
   }
 
@@ -123,8 +124,15 @@ function avatarSrc(url) {
   return `${escHtml(url)}${sep}s=64`;
 }
 
-function buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted }) {
-  const actionHtml = isMutual
+function buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted, isUnfollowable }) {
+  const actionHtml = isUnfollowable
+    ? `<div class="user-actions">
+        <span class="badge-unfollowable">Inacessível</span>
+        <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
+          ${ICON_CHEVRON}
+        </button>
+       </div>`
+    : isMutual
     ? `<div class="user-actions">
         <span class="badge-mutual">Mútuo</span>
         <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
@@ -220,11 +228,12 @@ function renderFullList(userList, list, actions, newSet) {
   list.forEach((user, i) => {
     const isNew = newSet.has(user.login);
     const isWhitelisted = actions.whitelist?.has(user.login);
+    const isUnfollowable = actions.unfollowableSet?.has(user.login);
     const item = document.createElement("div");
     item.className = `user-item${isNew ? " is-new" : ""}`;
     item.dataset.login = user.login;
     item.style.animationDelay = `${Math.min(i * 20, 200)}ms`;
-    item.innerHTML = buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted });
+    item.innerHTML = buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted, isUnfollowable });
     bindUserItemEvents(item, user, actions);
     fragment.appendChild(item);
   });
@@ -425,10 +434,14 @@ function showEmptyForTab(activeTab) {
 export function updateStats(state) {
   $("count-all").textContent = state.unfollowers.length;
   $("count-mutual").textContent = state.mutuals.length;
-  $("count-not-following-back").textContent = state.notFollowingBack.length;
+
+  const nfbCount = (!state.showUnfollowable && state.unfollowable?.size)
+    ? state.notFollowingBack.filter((u) => !state.unfollowable.has(u.login)).length
+    : state.notFollowingBack.length;
+  $("count-not-following-back").textContent = nfbCount;
 }
 
-export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals, notFollowingBack, whitelist }) {
+export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals, notFollowingBack, whitelist, unfollowable, showUnfollowable }) {
   let source = activeTab === "mutual"
     ? mutuals
     : activeTab === "not-following-back"
@@ -438,6 +451,11 @@ export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals
   // Oculta whitelisted na aba de não-seguidores
   if (activeTab === "all" && whitelist?.size) {
     source = source.filter((u) => !whitelist.has(u.login));
+  }
+
+  // Oculta unfollowable na aba "Não sigo" (perfis privados / restrições)
+  if (activeTab === "not-following-back" && !showUnfollowable && unfollowable?.size) {
+    source = source.filter((u) => !unfollowable.has(u.login));
   }
 
   if (query) {
@@ -459,30 +477,52 @@ export function renderList(state, actions = {}) {
   const userList = $("user-list");
   const isMutual = state.activeTab === "mutual";
   const isNotFollowingBack = state.activeTab === "not-following-back";
+  const hasUnfollowable = isNotFollowingBack && state.unfollowable?.size > 0;
 
   $("btn-unfollow-all").style.display =
     isMutual || isNotFollowingBack || state.unfollowers.length === 0 ? "none" : "";
   $("btn-follow-all").classList.toggle(
     "hidden",
-    !isNotFollowingBack || state.notFollowingBack.length === 0,
+    !isNotFollowingBack || !state.notFollowingBack.some(
+      (u) => !state.unfollowable?.has(u.login),
+    ),
   );
 
   $("all-following-back").classList.add("hidden");
   $("empty-filtered").classList.add("hidden");
 
-  const sourceEmpty =
+  // Fonte bruta (antes de filtrar unfollowable)
+  const rawSourceEmpty =
     (isMutual && state.mutuals.length === 0) ||
     (isNotFollowingBack && state.notFollowingBack.length === 0) ||
     (!isMutual && !isNotFollowingBack && state.unfollowers.filter(u => !state.whitelist?.has(u.login)).length === 0);
 
-  if (sourceEmpty) {
+  // Fonte visível (depois de filtrar unfollowable)
+  const list = getFilteredList(state);
+
+  // Banner de unfollowable
+  if (hasUnfollowable) {
+    const banner = $("unfollowable-banner");
+    const bannerText = $("unfollowable-text");
+    const count = state.unfollowable.size;
+    bannerText.textContent = `${count} contas não podem ser seguidas automaticamente.`;
+    $("btn-unfollowable-toggle").textContent = state.showUnfollowable ? "Ocultar" : "Mostrar";
+    banner.classList.remove("hidden");
+  } else {
+    $("unfollowable-banner")?.classList.add("hidden");
+  }
+
+  if (rawSourceEmpty) {
     currentVirtual?.destroy();
     currentVirtual = null;
+    userList.innerHTML = "";
+    userList.style.position = "";
+
+    // Source vazio mas há unfollowable ocultos → mostra lista vazia + banner
+    if (hasUnfollowable && !state.showUnfollowable) return;
     showEmptyForTab(state.activeTab);
     return;
   }
-
-  const list = getFilteredList(state);
 
   if (list.length === 0) {
     currentVirtual?.destroy();
@@ -498,7 +538,8 @@ export function renderList(state, actions = {}) {
     list.sort((a, b) => +newSet.has(b.login) - +newSet.has(a.login));
   }
 
-  const actionsWithMeta = { ...actions, isMutual, isNotFollowingBack };
+  const unfollowableSet = isNotFollowingBack ? state.unfollowable : null;
+  const actionsWithMeta = { ...actions, isMutual, isNotFollowingBack, unfollowableSet };
   const useVirtual = list.length > VIRTUAL_SCROLL_THRESHOLD;
 
   if (!useVirtual) {
