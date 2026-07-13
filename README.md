@@ -2,7 +2,7 @@
 
 # GitHub Unfollowers
 
-**Versão 1.3.1**
+**Versão 1.4.0**
 
 **Uma extensão para Chrome que analisa sua rede no GitHub: descubra quem não te segue de volta, quem você não segue e seus seguidores mútuos.**
 
@@ -27,7 +27,7 @@
 
 - 🔍 Identifique usuários que você segue mas não te seguem de volta
 - 👥 Veja quem te segue mas você não segue de volta (follow back)
-- 🤝 Visualize seguidores mútuos
+- 🤝 Visualize seguidores mutuos
 - 🔔 Badge no ícone da extensão com total de novos não-seguidores
 - 📊 Comparativo histórico com badge "Novo" nas listas
 - ⚡ Consulta rápida através da REST API do GitHub
@@ -40,6 +40,8 @@
 - 🌙 Tema dark/light com alternância
 - ⌨️ Atalhos de teclado e navegação por setas nas abas
 - ♿ Acessibilidade com ARIA roles e focus trap
+- 🚫 Detecção automática de perfis privados / inacessíveis
+- 📋 Histórico de eventos (follow, unfollow, inacessível)
 
 ---
 

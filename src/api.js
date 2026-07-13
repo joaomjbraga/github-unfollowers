@@ -130,16 +130,14 @@ async function fetchPage(path, page) {
 /**
  * Itera todas as páginas de um endpoint paginado do GitHub.
  * @param {string} path
- * @param {{ onProgress?: (page: number) => void }} [opts]
  */
-export async function fetchAllPages(path, { onProgress } = {}) {
+async function fetchAllPages(path) {
   const results = [];
   let page = 1;
   while (true) {
     const data = await fetchPage(path, page);
     if (!data || data.length === 0) break;
     results.push(...data);
-    onProgress?.(page);
     if (data.length < PAGE_SIZE) break;
     page++;
   }

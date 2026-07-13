@@ -32,7 +32,3 @@ export async function removeFromWhitelist(login) {
   set.delete(login);
   await saveWhitelist(set);
 }
-
-export async function clearWhitelist() {
-  await setStorage(STORAGE_KEY, []);
-}

@@ -19,7 +19,6 @@ const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
 const btnCreateToken = $("btn-create-token");
 const searchInput = $("search-input");
-const sortSelect = $("sort-select");
 const btnUnfollowAll = $("btn-unfollow-all");
 const btnFollowAll = $("btn-follow-all");
 const btnCancelMass = $("btn-cancel-mass");
@@ -106,6 +105,7 @@ async function detectUnfollowableProactive() {
         const data = await api.ghFetch(`/users/${user.login}`);
         if (data?.user_view_type === "private") {
           await addUnfollowable([user.login]);
+          await addEvent({ type: "unfollowable", login: user.login, avatar_url: user.avatar_url });
         }
       } catch (e) {
         if (e.httpStatus === 403 || e.httpStatus === 429) {
@@ -157,7 +157,6 @@ function resetViewState() {
   state.query = "";
   state.sortBy = "default";
   searchInput.value = "";
-  sortSelect.value = "default";
   $("list-label").textContent = "Não te seguem de volta";
   setTabSelected($("results-state").querySelector(".tabs"), $("tab-all"));
   showMainTab("results");
@@ -210,6 +209,7 @@ function showConfirmModal({ title, message, confirmText, confirmClass = "btn-pri
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalText.innerHTML = message;
+    modalCount.textContent = "";
     modalConfirm.textContent = confirmText;
     modalConfirm.className = `btn ${confirmClass} modal-confirm`;
     if (modalIcon) modalIcon.style.color = "";
@@ -254,6 +254,7 @@ function showModal({ count, isFollow }) {
       ? `Você está prestes a seguir <strong>${count}</strong> usuário(s) que te seguem.`
       : `Você está prestes a deixar de seguir <strong>${count}</strong> usuário(s) que não te seguem de volta.`;
     modalConfirm.textContent = isFollow ? "Sim, seguir" : "Sim, deixar de seguir";
+    modalConfirm.className = `btn btn-primary modal-confirm`;
     if (modalIcon) modalIcon.style.color = isFollow ? "var(--accent-emphasis)" : "var(--danger-hover)";
 
     modalOverlay.classList.remove("hidden");
@@ -310,6 +311,8 @@ async function handleFollowUser(login) {
     if (e.httpStatus === 404) {
       // 404 → não está seguindo → perfil privado / inacessível
       await addUnfollowable([login]);
+      const userData = state.notFollowingBack.find((u) => u.login === login);
+      if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
       ui.updateStats(state);
       ui.renderList(state, makeListActions());
       return;
@@ -336,7 +339,7 @@ async function handleOpenProfile(user, mode) {
   }
 
   // Abre painel e busca dados extras
-  const { isWhitelisted } = ui.openProfilePanel(user, {
+  ui.openProfilePanel(user, {
     whitelist: state.whitelist,
     onWhitelistToggle: handleWhitelistToggle,
   });
@@ -381,7 +384,12 @@ async function handleWhitelistToggle(login) {
 // Carregamento de dados
 // ---------------------------------------------------------------------------
 
+let refreshInProgress = false;
+
 async function refreshUserData({ silent = false } = {}) {
+  if (refreshInProgress) return;
+  refreshInProgress = true;
+
   if (!silent) {
     ui.showLoading("Obtendo seu perfil...");
     ui.setProgress(5);
@@ -478,6 +486,8 @@ async function refreshUserData({ silent = false } = {}) {
       ui.showError(e.message);
     }
     throw e;
+  } finally {
+    refreshInProgress = false;
   }
 }
 
@@ -557,12 +567,13 @@ function clearMassActionProgress() {
 }
 
 async function runMassAction({ actionType, items, actionFn, button, otherButton, processingLabel, idleLabel, totalCountOverride }) {
-  if (state.isProcessing) return;
+  if (state.isProcessing) return { succeededLogins: new Set(), done: 0, wasCancelled: false };
   state.isProcessing = true;
   state.cancelMassAction = false;
 
   const totalCount = totalCountOverride ?? items.length;
   let done = totalCount - items.length;
+  const succeededLogins = new Set();
 
   button.disabled = true;
   otherButton.disabled = true;
@@ -577,7 +588,7 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
   for (const user of items) {
     if (state.cancelMassAction) break;
     const succeeded = await actionFn(user.login);
-    if (succeeded) done++;
+    if (succeeded) { done++; succeededLogins.add(user.login); }
     pending = pending.slice(1);
     button.textContent = `${processingLabel} (${done}/${totalCount})`;
     await saveMassActionProgress({ actionType, totalCount, pendingLogins: pending.map((u) => u.login) }).catch(() => {});
@@ -598,6 +609,8 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
   }
   button.disabled = false;
   button.textContent = idleLabel;
+
+  return { succeededLogins, done, wasCancelled };
 }
 
 async function handleUnfollowAll() {
@@ -620,18 +633,21 @@ async function handleFollowAll() {
 
   const beforeLogins = new Set(state.notFollowingBack.map((u) => u.login));
 
-  await runMassAction({
+  const { succeededLogins } = await runMassAction({
     actionType: "follow", items: [...state.notFollowingBack], actionFn: followUser,
     button: btnFollowAll, otherButton: btnUnfollowAll,
     processingLabel: "Processando", idleLabel: "Seguir todos",
   });
 
-  // Identifica users que NÃO foram adicionados a state.following (unfollowable)
-  const followedLogins = new Set(state.following.map((u) => u.login));
-  const unfollowable = [...beforeLogins].filter((l) => !followedLogins.has(l));
-  if (unfollowable.length) await addUnfollowable(unfollowable);
+  const unfollowable = [...beforeLogins].filter((l) => !succeededLogins.has(l));
+  if (unfollowable.length) {
+    await addUnfollowable(unfollowable);
+    for (const login of unfollowable) {
+      const userData = state.notFollowingBack.find((u) => u.login === login);
+      if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
+    }
+  }
 
-  // Atualiza state: move users confirmados de notFollowingBack para following/mutuals
   const unfollowableSet = new Set(unfollowable);
   const confirmedUsers = state.notFollowingBack.filter((u) => !unfollowableSet.has(u.login));
   for (const userData of confirmedUsers) {
@@ -662,7 +678,7 @@ async function resumePendingMassAction() {
 
   const beforeLogins = new Set(items.map((u) => u.login));
 
-  await runMassAction({
+  const { succeededLogins } = await runMassAction({
     actionType, items,
     actionFn: isFollow ? followUser : unfollowUser,
     button: isFollow ? btnFollowAll : btnUnfollowAll,
@@ -674,9 +690,14 @@ async function resumePendingMassAction() {
 
   // Para follow: identifica unfollowable e atualiza state (mesmo fluxo do handleFollowAll)
   if (isFollow) {
-    const followedLogins = new Set(state.following.map((u) => u.login));
-    const unfollowable = [...beforeLogins].filter((l) => !followedLogins.has(l));
-    if (unfollowable.length) await addUnfollowable(unfollowable);
+    const unfollowable = [...beforeLogins].filter((l) => !succeededLogins.has(l));
+    if (unfollowable.length) {
+      await addUnfollowable(unfollowable);
+      for (const login of unfollowable) {
+        const userData = state.notFollowingBack.find((u) => u.login === login);
+        if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
+      }
+    }
 
     const unfollowableSet = new Set(unfollowable);
     const confirmedUsers = state.notFollowingBack.filter((u) => !unfollowableSet.has(u.login));
@@ -714,11 +735,6 @@ function handleTabClick(event) {
   state.query = "";
   searchInput.value = "";
   $("list-label").textContent = TAB_LABELS[state.activeTab] ?? "";
-  ui.renderList(state, makeListActions());
-}
-
-function handleSortChange(event) {
-  state.sortBy = event.target.value;
   ui.renderList(state, makeListActions());
 }
 
@@ -956,7 +972,6 @@ function bindEventListeners() {
 
   document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", handleTabClick));
   searchInput.addEventListener("input", handleSearchInput);
-  sortSelect.addEventListener("change", handleSortChange);
 
   // Menu dropdown
   $("btn-menu").addEventListener("click", toggleMenu);

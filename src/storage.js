@@ -11,9 +11,10 @@
  * @returns {Promise<T | null>}
  */
 export function getStorage(key) {
-  return new Promise((resolve) =>
+  return new Promise((resolve, reject) =>
     chrome.storage.local.get([key], (res) => {
-      const val = res[key];
+      if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+      const val = res?.[key];
       resolve(val !== undefined ? val : null);
     }),
   );
@@ -25,7 +26,12 @@ export function getStorage(key) {
  * @returns {Promise<void>}
  */
 export function setStorage(key, value) {
-  return new Promise((resolve) => chrome.storage.local.set({ [key]: value }, resolve));
+  return new Promise((resolve, reject) =>
+    chrome.storage.local.set({ [key]: value }, () => {
+      if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+      resolve();
+    }),
+  );
 }
 
 /**
@@ -33,7 +39,12 @@ export function setStorage(key, value) {
  * @returns {Promise<void>}
  */
 export function setStorageMulti(obj) {
-  return new Promise((resolve) => chrome.storage.local.set(obj, resolve));
+  return new Promise((resolve, reject) =>
+    chrome.storage.local.set(obj, () => {
+      if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+      resolve();
+    }),
+  );
 }
 
 /**
@@ -42,5 +53,10 @@ export function setStorageMulti(obj) {
  */
 export function removeStorage(keys) {
   const arr = Array.isArray(keys) ? keys : [keys];
-  return new Promise((resolve) => chrome.storage.local.remove(arr, resolve));
+  return new Promise((resolve, reject) =>
+    chrome.storage.local.remove(arr, () => {
+      if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+      resolve();
+    }),
+  );
 }

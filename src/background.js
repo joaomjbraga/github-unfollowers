@@ -39,7 +39,10 @@ async function checkForChanges() {
   if (!token) return;
 
   const user = await bgFetch("/user", token);
-  if (!user) return;
+  if (!user) {
+    chrome.action.setBadgeText({ text: "" });
+    return;
+  }
 
   const [following, followers] = await Promise.all([
     fetchAllPages(`/users/${user.login}/following`, token),
@@ -130,10 +133,13 @@ async function bgFetch(path, token) {
   return res.json();
 }
 
+const MAX_BG_RETRIES = 3;
+
 /** Busca todas as páginas de um endpoint paginado. */
 async function fetchAllPages(path, token) {
   const results = [];
   let page = 1;
+  let retries = 0;
   while (true) {
     let res;
     try {
@@ -147,12 +153,14 @@ async function fetchAllPages(path, token) {
 
     if (res.status === 401) return null;
     if (res.status === 429) {
+      if (retries++ >= MAX_BG_RETRIES) return null;
       const wait = parseInt(res.headers.get("Retry-After") || "60", 10) * 1000;
       await new Promise((r) => setTimeout(r, wait));
       continue;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+    retries = 0;
     const data = await res.json();
     if (!data || data.length === 0) break;
     results.push(...data);

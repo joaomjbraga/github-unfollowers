@@ -3,7 +3,7 @@
  * @param {GHUser[] | string[]} list
  * @returns {Set<string>}
  */
-export function createLoginSet(list) {
+function createLoginSet(list) {
   if (!Array.isArray(list) || list.length === 0) return new Set();
   return typeof list[0] === "string"
     ? new Set(/** @type {string[]} */ (list))

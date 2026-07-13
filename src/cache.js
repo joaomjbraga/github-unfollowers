@@ -1,5 +1,5 @@
 import { getStorage, setStorage } from "./storage.js";
-import { STORAGE_KEYS } from "./constants.js";
+import { STORAGE_KEYS, PAGE_SIZE } from "./constants.js";
 
 const MEMORY_TTL = 5 * 60 * 1000;   // 5 min — validade na memória
 const STORAGE_TTL = 60 * 60 * 1000; // 1 h  — validade persistida
@@ -9,7 +9,7 @@ const memory = new Map();
 let storageLoaded = false;
 
 function cacheKey(path, page) {
-  return `${path}?per_page=100&page=${page}`;
+  return `${path}?per_page=${PAGE_SIZE}&page=${page}`;
 }
 
 /** @returns {{data: unknown, etag: string|null} | null} */

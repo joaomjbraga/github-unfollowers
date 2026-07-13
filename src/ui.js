@@ -1,8 +1,6 @@
 import { $ } from "./dom.js";
-import { escHtml, sleep } from "./utils.js";
+import { escHtml } from "./utils.js";
 import { VIRTUAL_SCROLL_THRESHOLD, ITEM_HEIGHT_PX, OVERSCAN_ITEMS } from "./constants.js";
-
-export { sleep };
 
 // ---------------------------------------------------------------------------
 // Virtual Scroll
@@ -245,7 +243,6 @@ function renderFullList(userList, list, actions, newSet) {
 // ---------------------------------------------------------------------------
 
 let profilePanelOpen = false;
-let profilePanelCloseCallback = null;
 
 export function openProfilePanel(user, { onWhitelistToggle, whitelist } = {}) {
   const panel = $("profile-panel");
@@ -278,13 +275,13 @@ export function openProfilePanel(user, { onWhitelistToggle, whitelist } = {}) {
   wlBtn.innerHTML = isWhitelisted
     ? `${ICON_BOOKMARK_FILL} <span>Remover da whitelist</span>`
     : `${ICON_BOOKMARK} <span>Ignorar sempre</span>`;
+  if (onWhitelistToggle) {
+    wlBtn.onclick = () => onWhitelistToggle(user.login);
+  }
 
   profilePanelOpen = true;
   panel.classList.add("open");
   overlay.classList.remove("hidden");
-
-  // Callback para fechar
-  profilePanelCloseCallback = () => closeProfilePanel();
 
   return { isWhitelisted };
 }
@@ -295,7 +292,6 @@ export function closeProfilePanel() {
   panel.classList.remove("open");
   overlay.classList.add("hidden");
   profilePanelOpen = false;
-  profilePanelCloseCallback = null;
 }
 
 export function isPanelOpen() {
@@ -360,7 +356,7 @@ export function renderHistory(events) {
           </a>
           <div class="user-meta">
             <span class="history-badge history-badge--${e.type}">
-              ${e.type === "unfollowed" ? "Deixou de seguir" : "Seguiu você"}
+              ${e.type === "unfollowed" ? "Deixou de seguir" : e.type === "unfollowable" ? "Inacessível" : "Seguiu você"}
             </span>
             <span class="user-sep">·</span>
             <span class="user-followers">${relativeTime(e.ts)}</span>
@@ -470,7 +466,7 @@ export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals
     else if (sortBy === "alpha") sorted.sort((a, b) => a.login.localeCompare(b.login));
     return sorted;
   }
-  return source;
+  return [...source];
 }
 
 export function renderList(state, actions = {}) {
@@ -603,24 +599,6 @@ export function showConnectError(msg) {
 
 export function removeUserItem(login) {
   document.querySelector(`[data-login="${login}"]`)?.remove();
-}
-
-export function refreshEmptyState(state) {
-  const { activeTab, unfollowers, notFollowingBack, mutuals } = state;
-  $("empty-filtered").classList.add("hidden");
-  $("all-following-back").classList.add("hidden");
-
-  const isEmpty =
-    (activeTab === "mutual" && mutuals.length === 0) ||
-    (activeTab === "not-following-back" && notFollowingBack.length === 0) ||
-    (activeTab === "all" && unfollowers.filter(u => !state.whitelist?.has(u.login)).length === 0);
-
-  if (isEmpty) showEmptyForTab(activeTab);
-}
-
-export function refreshUnfollowAllBtn(state) {
-  $("btn-unfollow-all").style.display =
-    state.activeTab !== "all" || state.unfollowers.length === 0 ? "none" : "";
 }
 
 export function showDetectionProgress(remaining) {

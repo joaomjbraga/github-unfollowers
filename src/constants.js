@@ -21,11 +21,6 @@ export const STORAGE_KEYS = {
   },
 };
 
-// Compatibilidade com código legado que usa as chaves diretamente
-export const SNAPSHOT_KEYS = STORAGE_KEYS.snapshots;
-export const PENDING_KEYS = STORAGE_KEYS.pending;
-export const CACHED_LISTS_KEY = STORAGE_KEYS.cachedLists;
-
 export const GITHUB_API = "https://api.github.com";
 export const FETCH_TIMEOUT_MS = 30_000;
 export const MAX_RETRIES = 3;

@@ -17,14 +17,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 - **Contador dinâmico** — badge da aba "Não sigo" subtrai contas inacessíveis quando ocultas, refletindo o número real de ações disponíveis.
 - **Verificação pós-follow** — após "Seguir todos", verifica quais users foram adicionados a `state.following` para identificar os inacessíveis (perfis privados retornam 204 mas ficam pendentes).
 - **Detecção proativa de perfis privados** — na abertura do popup, verifica users em `notFollowingBack` via `GET /users/{login}` em batches silenciosos. Perfis com `user_view_type === "private"` são marcados como inacessíveis automaticamente. Progresso salvo no storage para retomada.
+- **Histórico de eventos** — eventos de "inacessível" agora são registrados no histórico junto com follow/unfollow.
 
-### Alterado
+### Corrigido
 
-- **`followUser()`** — retorna `true/false` sem alterar state; o caller decide quando atualizar (individual vs massa).
-- **`handleFollowAll()`** — após conclusão, identifica contas não adicionadas a `state.following` como inacessíveis e move as confirmadas para `following/mutuals`.
-- **`handleFollowUser()`** — após follow individual, verifica via `GET /user/following/{login}`. Se 404, marca como inacessível e mantém na lista (não move para following).
-- **`resumePendingMassAction()`** — aplica a mesma lógica de detecção ao retomar ação em massa.
-- **Botão "Seguir todos"** — oculto quando todos os usuários da aba são inacessíveis.
+- **"Seguir todos" marcava todos como inacessíveis** — `runMassAction` agora retorna o conjunto de logins que tiveram sucesso, e `handleFollowAll`/`resumePendingMassAction` usam esse retorno em vez de verificar `state.following` (que nunca era atualizado pela ação em massa).
+- **`list.sort()` corrompia arrays do state** — `getFilteredList` agora sempre retorna uma cópia do array, evitando que `.sort()` modifique os dados canônicos.
+- **Falhas de storage silenciosas** — `storage.js` agora verifica `chrome.runtime.lastError` em todas as operações e rejeita a promise em caso de erro.
+- **Loop infinito no service worker** — `background.js` `fetchAllPages` agora tem limite de 3 retries em HTTP 429, evitando que o service worker travasse.
+- **Badge persistente com token expirado** — badge da extensão é limpo quando o token é inválido.
+- **Poluição de classe do modal** — `showModal` agora define `modalConfirm.className` explicitamente, evitando que `showConfirmModal` afete modais subsequentes.
+- **`modalCount` com dados antigos** — `showConfirmModal` agora limpa o elemento `modalCount`.
+- **Race condition no refresh** — `refreshUserData` agora tem guard de re-entrância (`refreshInProgress`) para evitar chamadas concorrentes.
+- **Race condition no botão whitelist** — `onWhitelistToggle` é conectado imediatamente em `openProfilePanel`, eliminando a janela entre abertura do painel e bind assíncrono do handler.
+- **`per_page` hardcoded no cache** — `cache.js` agora usa `PAGE_SIZE` de `constants.js` em vez de valor fixo `100`.
+
+### Removido
+
+- **Código morto em JS** — `sleep` import/re-export desnecessário em `ui.js`, `profilePanelCloseCallback` (write-only), `refreshEmptyState`/`refreshUnfollowAllBtn` (exportados mas nunca chamados), `isWhitelisted` (desestruturado mas não usado), `onWhitelistToggle` (passado mas ignorado), `fetchAllPages` (exportado mas só usado internamente), `onProgress` (parâmetro nunca utilizado), 3 exports legado em `constants.js`, `clearWhitelist` (nunca importado), `createLoginSet` (exportado mas só usado internamente).
+- **Código morto em CSS** — `.btn-ghost-danger`, `.skeleton-header`, `.skeleton-avatar`, `.skeleton-line-sm`, `.skeleton-btn-group`, `.skeleton-btn`, 5 variáveis CSS não utilizadas (`--bg-inset`, `--bg-overlay`, `--border`, `--border-muted`, `--shadow`), regra `#results-state.hidden` redundante.
 
 ---
 
