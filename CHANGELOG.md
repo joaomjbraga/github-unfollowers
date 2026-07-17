@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.4.3] - 2026-07-17
+
+### Corrigido
+
+- **Follow/Unfollow não executavam** (regressão crítica) — `ghFetch` aceitava o parâmetro `method` (GET/PUT/DELETE) mas nunca o repassava para `fetchWithRetry`, que por sua vez não o repassava para `fetch()`. Todas as chamadas HTTP — incluindo `DELETE /user/following/{login}` (unfollow) e `PUT /user/following/{login}` (follow) — eram feitas como GET por padrão. Agora `fetchWithRetry` aceita e propaga o `method` corretamente.
+- **Cancel de ação em massa não respondia imediatamente** — verificação do flag `state.cancelMassAction` só acontecia uma vez por iteração no topo do loop. Agora verifica após cada `await` (chamada API e saveProgress), interrompendo o mais rapidamente possível.
+
+---
+
 ## [1.4.2] - 2026-07-17
 
 ### Corrigido

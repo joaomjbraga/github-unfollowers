@@ -2,7 +2,7 @@
 
 # GitHub Unfollowers
 
-**Versão 1.4.2**
+**Versão 1.4.3**
 
 **Uma extensão para Chrome que analisa sua rede no GitHub: descubra quem não te segue de volta, quem você não segue e seus seguidores mútuos.**
 

@@ -72,12 +72,13 @@ async function buildApiError(res) {
  * @param {{ headers?: Record<string,string> }} [opts]
  * @returns {Promise<Response>}
  */
-async function fetchWithRetry(url, { headers } = {}) {
+async function fetchWithRetry(url, { headers, method = "GET" } = {}) {
   let attempt = 0;
   while (true) {
     let res;
     try {
       res = await fetch(url, {
+        method,
         headers,
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
@@ -126,7 +127,7 @@ export async function ghFetch(path, method = "GET") {
     return method === "DELETE" || mockRes.status === 204 ? null : mockRes.json();
   }
 
-  const res = await fetchWithRetry(`${GITHUB_API}${path}`, { headers: buildHeaders() });
+  const res = await fetchWithRetry(`${GITHUB_API}${path}`, { headers: buildHeaders(), method });
   return method === "DELETE" || res.status === 204 ? null : res.json();
 }
 

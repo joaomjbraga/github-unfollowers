@@ -531,10 +531,12 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
     const user = items[i];
     attemptedLogins.add(user.login);
     const result = await actionFn(user.login, { skipSideEffects: true });
+    if (state.cancelMassAction) break;
     if (result.succeeded) { done++; succeededLogins.add(user.login); }
     else if (result.unfollowable) { unfollowableLogins.add(user.login); }
     button.textContent = `${processingLabel} (${done}/${totalCount})`;
     await saveMassActionProgress({ actionType, totalCount, pendingLogins: items.slice(i + 1).map((u) => u.login) }).catch(() => {});
+    if (state.cancelMassAction) break;
     await sleep(Math.max(api.getRateLimitDelay(), 200));
   }
 
