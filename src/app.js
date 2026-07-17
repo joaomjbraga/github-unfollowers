@@ -370,8 +370,8 @@ async function refreshUserData({ silent = false } = {}) {
     if (!silent) {
       ui.setProgress(100);
       ui.showResults();
-      scheduleAutoRefresh();
     }
+    scheduleAutoRefresh();
     ui.updateStats(state);
     ui.renderList(state, makeListActions());
     api.persistCache().catch(() => {});
@@ -461,7 +461,7 @@ async function followUser(login, { skipSideEffects = false } = {}) {
       }
     }
 
-    ui.removeUserItem(login);
+    if (!skipSideEffects) ui.removeUserItem(login);
     return { succeeded: true, unfollowable: false };
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Seguir"; }
@@ -562,11 +562,15 @@ async function handleUnfollowAll() {
     state.isProcessing = false;
     return;
   }
+  state.isProcessing = false;
   await runMassAction({
     actionType: "unfollow", items: toUnfollow, actionFn: unfollowUser,
     button: btnUnfollowAll, otherButton: btnFollowAll,
     processingLabel: "Processando", idleLabel: "Parar de seguir todos",
   });
+  ui.updateStats(state);
+  ui.renderList(state, makeListActions());
+  await persistState();
 }
 
 /** Processa resultado de mass-follow: identifica unfollowable e atualiza state. */
@@ -607,6 +611,7 @@ async function handleFollowAll() {
     return;
   }
 
+  state.isProcessing = false;
   const { succeededLogins, attemptedLogins, unfollowableLogins } = await runMassAction({
     actionType: "follow", items: followable, actionFn: followUser,
     button: btnFollowAll, otherButton: btnUnfollowAll,
@@ -643,6 +648,7 @@ async function resumePendingMassAction() {
     return;
   }
 
+  state.isProcessing = false;
   const { succeededLogins, attemptedLogins, unfollowableLogins } = await runMassAction({
     actionType, items,
     actionFn: isFollow ? followUser : unfollowUser,
