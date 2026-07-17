@@ -423,7 +423,15 @@ async function unfollowUser(login, { skipSideEffects = false } = {}) {
     return { succeeded: true, unfollowable: false };
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
-    ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+    if (e.httpStatus === 403 || e.httpStatus === 404) {
+      ui.showError(`Não foi possível deixar de seguir ${login}: perfil inacessível.`);
+    } else if (e.httpStatus === 429) {
+      ui.showError(`Muitas requisições. Aguarde e tente novamente.`);
+    } else if (e.httpStatus >= 500) {
+      ui.showError(`Erro temporário do GitHub. Tente novamente.`);
+    } else {
+      ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+    }
     return { succeeded: false, unfollowable: false };
   }
 }
@@ -503,7 +511,7 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
   state.cancelMassAction = false;
 
   const totalCount = items.length;
-  let done = totalCount - items.length;
+  let done = 0;
   const succeededLogins = new Set();
   const attemptedLogins = new Set();
   const unfollowableLogins = new Set();
