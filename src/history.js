@@ -10,7 +10,7 @@ const STORAGE_KEY = HISTORY_STORAGE_KEY;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 /**
- * @typedef {{ type: "followed"|"unfollowed"|"unfollowable", login: string, avatar_url: string, ts: number }} HistoryEvent
+ * @typedef {{ type: "followed"|"unfollowed"|"unfollowable"|"not_following_back", login: string, avatar_url: string, ts: number }} HistoryEvent
  */
 
 /** @returns {Promise<HistoryEvent[]>} */
@@ -23,7 +23,7 @@ export async function loadHistory() {
 
 /**
  * Adiciona um evento e expurga os antigos.
- * @param {{ type: "followed"|"unfollowed"|"unfollowable", login: string, avatar_url: string }} event
+ * @param {{ type: "followed"|"unfollowed"|"unfollowable"|"not_following_back", login: string, avatar_url: string }} event
  */
 export async function addEvent(event) {
   const history = await loadHistory();

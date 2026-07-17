@@ -184,8 +184,10 @@ async function fetchAllPages(path, token) {
     if (res.status === 401) return null;
     if (res.status === 429) {
       if (retries++ >= MAX_BG_RETRIES) return null;
-      const wait = parseInt(res.headers.get("Retry-After") || "60", 10) * 1000;
-      await new Promise((r) => setTimeout(r, wait));
+      const retryAfter = parseInt(res.headers.get("Retry-After") || "60", 10);
+      const waitMs = (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60) * 1000;
+      const cappedMs = Math.min(waitMs, 300_000);
+      await new Promise((r) => setTimeout(r, cappedMs));
       continue;
     }
     if (!res.ok) {

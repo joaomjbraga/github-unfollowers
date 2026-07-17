@@ -1172,6 +1172,11 @@ body {
   color: #ff9f0a;
 }
 
+.history-badge--not_following_back {
+  background: rgba(139, 148, 158, 0.15);
+  color: var(--text-secondary);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    WHITELIST badges
    ═══════════════════════════════════════════════════════════════ */

@@ -145,12 +145,13 @@ async function renderWhitelistTab() {
 
   // Bind remove buttons
   $("whitelist-list").querySelectorAll("[data-remove]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const login = btn.dataset.remove;
-      await removeFromWhitelist(login);
-      state.whitelist.delete(login);
-      renderWhitelistTab();
-      ui.renderList(state, makeListActions());
+      removeFromWhitelist(login).then(() => {
+        state.whitelist.delete(login);
+        renderWhitelistTab();
+        ui.renderList(state, makeListActions());
+      }).catch(console.error);
     });
   });
 }
@@ -345,7 +346,7 @@ async function refreshUserData({ silent = false } = {}) {
       }
       for (const u of state.notFollowingBack) {
         if (!prevNSet.has(u.login)) {
-          await addEvent({ type: "followed", login: u.login, avatar_url: u.avatar_url });
+          await addEvent({ type: "not_following_back", login: u.login, avatar_url: u.avatar_url });
         }
       }
     } else {
@@ -719,6 +720,7 @@ async function handleRefresh() {
 }
 
 async function handleLogout() {
+  refreshInProgress = false;
   await removeStorage([
     STORAGE_KEYS.token,
     UNFOLLOWABLE_KEY,
@@ -954,26 +956,23 @@ async function renderDevScenarios() {
   `).join("");
 
   container.querySelectorAll(".dev-scenario").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const id = btn.dataset.id;
       const newId = devPanelActiveId === id ? null : id;
       devPanelActiveId = newId;
-      if (newId) {
-        await setConfig({ enabled: true, scenario: newId, latency: 0 });
-      } else {
-        await setConfig({ enabled: false, scenario: null, latency: 0 });
-      }
-      renderDevScenarios();
+      const config = newId
+        ? { enabled: true, scenario: newId, latency: 0 }
+        : { enabled: false, scenario: null, latency: 0 };
+      setConfig(config).then(() => renderDevScenarios()).catch(console.error);
     });
   });
 }
 
 function initDevPanel() {
   $("dev-close")?.addEventListener("click", closeDevPanel);
-  $("dev-clear")?.addEventListener("click", async () => {
+  $("dev-clear")?.addEventListener("click", () => {
     devPanelActiveId = null;
-    await setConfig({ enabled: false, scenario: null, latency: 0 });
-    renderDevScenarios();
+    setConfig({ enabled: false, scenario: null, latency: 0 }).then(() => renderDevScenarios()).catch(console.error);
   });
 }
 
@@ -1008,11 +1007,11 @@ function bindEventListeners() {
   $("btn-menu").addEventListener("click", toggleMenu);
   $("menu-overlay").addEventListener("click", closeMenu);
 
-  $("menu-theme").addEventListener("click", async () => {
+  $("menu-theme").addEventListener("click", () => {
     closeMenu();
     currentTheme = toggleTheme(currentTheme);
     applyTheme(currentTheme);
-    await saveTheme(currentTheme);
+    saveTheme(currentTheme).catch(console.error);
   });
   $("menu-refresh").addEventListener("click", () => { closeMenu(); handleRefresh(); });
   $("menu-export").addEventListener("click", () => { closeMenu(); handleExport(); });
@@ -1025,7 +1024,7 @@ function bindEventListeners() {
     const menuDev = $("menu-dev");
     if (menuDev) menuDev.style.display = "";
     if (menuDev) {
-      menuDev.addEventListener("click", async () => {
+      menuDev.addEventListener("click", () => {
         closeMenu();
         openDevPanel();
       });
@@ -1039,9 +1038,8 @@ function bindEventListeners() {
   $("nav-tab-whitelist").addEventListener("click", () => showMainTab("whitelist"));
 
   // Limpar histórico
-  $("btn-clear-history").addEventListener("click", async () => {
-    await clearHistory();
-    renderHistoryTab();
+  $("btn-clear-history").addEventListener("click", () => {
+    clearHistory().then(() => renderHistoryTab()).catch(console.error);
   });
 
   // Painel de perfil — fechar

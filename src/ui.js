@@ -1,6 +1,6 @@
 import { $ } from "./dom.js";
 import { escHtml } from "./utils.js";
-import { VIRTUAL_SCROLL_THRESHOLD, ITEM_HEIGHT_PX, OVERSCAN_ITEMS } from "./constants.js";
+import { VIRTUAL_SCROLL_THRESHOLD, ITEM_HEIGHT_PX, OVERSCAN_ITEMS, VIRTUAL_SCROLL_MAX_POOL } from "./constants.js";
 
 // ---------------------------------------------------------------------------
 // Virtual Scroll
@@ -82,6 +82,10 @@ class VirtualScroll {
     node.removeAttribute("style");
     node.parentNode?.removeChild(node);
     this.pool.push(node);
+    if (this.pool.length > VIRTUAL_SCROLL_MAX_POOL) {
+      const excess = this.pool.splice(VIRTUAL_SCROLL_MAX_POOL);
+      excess.forEach((n) => n.remove());
+    }
   }
 
   releaseAll() {
@@ -356,7 +360,7 @@ export function renderHistory(events) {
           </a>
           <div class="user-meta">
             <span class="history-badge history-badge--${e.type}">
-              ${e.type === "unfollowed" ? "Deixou de seguir" : e.type === "unfollowable" ? "Inacessível" : "Seguiu você"}
+              ${e.type === "unfollowed" ? "Deixou de seguir" : e.type === "unfollowable" ? "Inacessível" : e.type === "not_following_back" ? "Não segue você" : "Seguiu você"}
             </span>
             <span class="user-sep">·</span>
             <span class="user-followers">${relativeTime(e.ts)}</span>
@@ -501,7 +505,7 @@ export function renderList(state, actions = {}) {
   const rawSourceEmpty =
     (isMutual && state.mutuals.length === 0) ||
     (isNotFollowingBack && state.notFollowingBack.length === 0) ||
-    (!isMutual && !isNotFollowingBack && state.unfollowers.filter(u => !state.whitelist?.has(u.login)).length === 0);
+    (!isMutual && !isNotFollowingBack && unfollowTargets.length === 0);
 
   // Fonte visível (depois de filtrar unfollowable)
   const list = getFilteredList(state);
@@ -613,19 +617,6 @@ export function showConnectError(msg) {
 
 export function removeUserItem(login) {
   document.querySelector(`[data-login="${login}"]`)?.remove();
-}
-
-export function showDetectionProgress(remaining) {
-  const banner = $("unfollowable-banner");
-  const bannerText = $("unfollowable-text");
-  if (!banner || !bannerText) return;
-  bannerText.textContent = `Verificando ${remaining} perfis restantes...`;
-  $("btn-unfollowable-toggle").classList.add("hidden");
-  banner.classList.remove("hidden");
-}
-
-export function hideDetectionProgress() {
-  $("btn-unfollowable-toggle")?.classList.remove("hidden");
 }
 
 // ---------------------------------------------------------------------------

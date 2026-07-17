@@ -5,7 +5,6 @@ export const STORAGE_KEYS = {
   cachedLists: "cached_lists",
   massActionProgress: "mass_action_progress",
   unfollowableLogins: "unfollowable_logins_v1",
-  checkedProactive: "checked_proactive_v1",
 
   snapshots: {
     unfollowers: "snapshot_unfollowers",
@@ -36,6 +35,7 @@ export const BG_ALARM_INTERVAL_MINUTES = 5;
 export const VIRTUAL_SCROLL_THRESHOLD = 50;
 export const ITEM_HEIGHT_PX = 52;
 export const OVERSCAN_ITEMS = 10;
+export const VIRTUAL_SCROLL_MAX_POOL = 100;
 
 // Dev mode — simulação de erros
 export const IS_DEV_MODE = false;

@@ -6,6 +6,63 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.4.2] - 2026-07-17
+
+### Corrigido
+
+- **Falsos positivos de "inacessível"** — verificação GET pós-follow falhava silenciosamente por timing, marcando contas acessíveis como inacessíveis. Agora `followUser()` faz retry com delay de 1.5s antes de concluir.
+- **UI não atualizava após ações** — `persistState()` não era chamado após operações que modificavam o estado, causando perda de dados ao fechar/reabrir o popup.
+- **Contagem do banner não atualizava** — `addUnfollowable` não disparava `renderList()`, mantendo o contador desatualizado.
+- **Event listeners duplicados** — `bindEventListeners()` era chamado múltiplas vezes, criando handlers duplicados. Agora usa guard `listenersBound`.
+- **Ações em massa marcavam falhas transitórias como inacessíveis** — `runMassAction` não distinguia entre "não tentado" e "falhou". Agora retorna `{succeeded, unfollowable}` para rastreamento correto.
+- **Auto-refresh durante modais** — `scheduleAutoRefresh` não verificava `state.isProcessing`, disparando refresh indesejado.
+- **Banner de inacessíveis contava todos** — `activeUnfollowableCount` incluía inacessíveis de outras abas. Agora filtra apenas notFollowingBack.
+- **count-all ignorava whitelist** — badge do menu mostrava total sem descontar whitelisted.
+- **"Seguir todos" incluía inacessíveis** — `handleFollowAll` não filtrava contas inacessíveis antes de processar.
+- **handleWhitelistToggle sem updateStats** — toggle de whitelist não atualizava contadores.
+- **Badge nunca zerava** — `setBadgeText("")` não era chamado quando `totalNew === 0`, mantendo badge anterior.
+- **Resume usava totalCount original** — `resumePendingMassAction` usava contador desatualizado em vez de `items.length`.
+- **Toggle inacessível não atualizava badge** — alternar visibilidade de inacessíveis não recalculava contadores.
+- **processMassFollowResult filtrava incorretamente** — usava `!unfollowableLogins.has()` em vez de `succeededLogins.has()`, movendo usuários errados entre categorias.
+- **handleRefresh travava popup** — chamadas concorrentes de refresh causavam hang. Agora usa guard `refreshInProgress`.
+- **handleLogout limpeza incompleta** — não removia todas as chaves do storage, causando dados residuais.
+- **btn-unfollow-all sem filtrar whitelist** — botão "Parar de seguir todos" aparecia quando só havia whitelisted.
+- **Race condition no modal** — `state.isProcessing` era definido depois do modal, criando janela para auto-refresh.
+- **runMassAction nunca executava** (regressão crítica) — `state.isProcessing` permanecia `true` após modal, impedindo execução. Agora é resetado antes de chamar `runMassAction`.
+- **handleUnfollowAll sem pós-processamento** — não atualizava stats/render após ação em massa.
+- **removeUserItem ignorava skipSideEffects** — remoção DOM era feita mesmo em operações batch silenciosas.
+- **Auto-refresh não agendava no cache** — ao carregar dados do cache, `scheduleAutoRefresh` não era chamado.
+- **Silent refresh destruía cache** — erro em refresh silencioso limpava dados缓存ados. Agora só limpa em refresh visível.
+- **resetState compartilhava referências** — `unfollowable` e outros Sets eram compartilhados com `INITIAL_STATE`. Agora cria novas instâncias a cada chamada.
+- **Background limpava badge em erro de rede** — erros de rede não eram re-throw, causando badge "" indevidamente.
+- **XSS via innerHTML** — toast de erro de unfollow usava login sem sanitização. Agora usa `escHtml()`.
+- **handleRefresh sem catch** — promise rejeitada não tratada. Adicionado `.catch(() => {})`.
+- **showError mantinha título antigo** — ao mostrar erro sem título, o anterior persistia.
+- **VirtualScroll pool crescia indefinidamente** — pool de nós nunca encolhia. Agora limitado a 100 (`VIRTUAL_SCROLL_MAX_POOL`).
+- **Retry-After causava NaN** — header HTTP-date retornava NaN, causando retry imediato. Agora usa fallback para 60s.
+- **refreshInProgress não resetava no logout** — inconsistência na limpeza de estado.
+- **Filtro redundante no renderList** — `unfollowTargets` já calculado era recalculado.
+
+### Adicionado
+
+- **skipSideEffects para operações batch** — `followUser`/`unfollowUser` aceitam `{ skipSideEffects: true }` para operações em massa, evitando efeitos colaterais indesejados.
+- **Tipo de evento "not_following_back"** — novos não-seguidores agora usam tipo distinto no histórico (antes usava "followed" incorretamente).
+- **ARIA em modais** — `role="dialog"`, `aria-modal` e `aria-labelledby`/`aria-label` adicionados ao modal de confirmação e painel de perfil.
+- **NaN guard em Retry-After** — fallback para 60s quando header contém valor não numérico.
+- **.catch() em async handlers** — 6 event listeners async agora tratam rejeições.
+
+### Alterado
+
+- **Toast de unfollow mais descritivo** — distingue 403/404 ("perfil inacessível"), 429 ("muitas requisições"), 5xx ("erro temporário").
+- **Badge de histórico "not_following_back"** — estilo neutro (cinza) para distinguir de follow/unfollow.
+- **Retry-After no background limitado a 300s** — evita bloqueio prolongado do service worker.
+
+### Removido
+
+- **Código morto** — `showDetectionProgress`/`hideDetectionProgress` (nunca chamados), `checkedProactive` (state nunca usado), `let done = totalCount - items.length` (sempre 0).
+
+---
+
 ## [1.4.1] - 2026-07-16
 
 ### Corrigido
