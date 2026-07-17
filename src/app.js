@@ -3,7 +3,7 @@ import { $ } from "./dom.js";
 import { resetState, state } from "./store.js";
 import { setStorageMulti, removeStorage, getStorage, setStorage } from "./storage.js";
 import * as ui from "./ui.js";
-import { computeRelationshipLists, sleep } from "./utils.js";
+import { computeRelationshipLists, sleep, escHtml } from "./utils.js";
 import { STORAGE_KEYS, AUTO_REFRESH_MS, IS_DEV_MODE } from "./constants.js";
 import { addEvent, loadHistory, clearHistory, HISTORY_STORAGE_KEY } from "./history.js";
 import { loadWhitelist, addToWhitelist, removeFromWhitelist, WHITELIST_STORAGE_KEY } from "./whitelist.js";
@@ -379,7 +379,7 @@ async function refreshUserData({ silent = false } = {}) {
     if (e.isAuthError) {
       ui.showConnectError("Sessão expirada. Seu token foi removido. Faça login novamente.");
       ui.showToken();
-    } else {
+    } else if (!silent) {
       ui.showError(e.message, { onRetry: () => refreshUserData() });
     }
     throw e;
@@ -424,13 +424,13 @@ async function unfollowUser(login, { skipSideEffects = false } = {}) {
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
     if (e.httpStatus === 403 || e.httpStatus === 404) {
-      ui.showError(`Não foi possível deixar de seguir ${login}: perfil inacessível.`);
+      ui.showError(`Não foi possível deixar de seguir ${escHtml(login)}: perfil inacessível.`);
     } else if (e.httpStatus === 429) {
       ui.showError(`Muitas requisições. Aguarde e tente novamente.`);
     } else if (e.httpStatus >= 500) {
       ui.showError(`Erro temporário do GitHub. Tente novamente.`);
     } else {
-      ui.showError(`Erro ao deixar de seguir ${login}: ${e.message}`);
+      ui.showError(`Erro ao deixar de seguir ${escHtml(login)}: ${e.message}`);
     }
     return { succeeded: false, unfollowable: false };
   }
@@ -487,7 +487,7 @@ async function followUser(login, { skipSideEffects = false } = {}) {
     }
     // Silencia erros durante ação em massa (apenas individual exibe toast)
     if (!state.isProcessing) {
-      ui.showError(`Erro ao seguir ${login}: ${e.message}`);
+      ui.showError(`Erro ao seguir ${escHtml(login)}: ${e.message}`);
     }
     return { succeeded: false, unfollowable: false };
   }
@@ -715,7 +715,7 @@ async function handleRefresh() {
   state.user = null;
   resetViewState();
   chrome.action.setBadgeText({ text: "" });
-  await refreshUserData();
+  await refreshUserData().catch(() => {});
 }
 
 async function handleLogout() {

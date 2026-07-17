@@ -586,7 +586,7 @@ export function showError(msg, { title, onRetry } = {}) {
   $("loading-state").classList.add("hidden");
   $("error-state").classList.remove("hidden");
   $("main-error").innerHTML = msg;
-  if (title) $("error-state-title").textContent = title;
+  $("error-state-title").textContent = title || "Algo deu errado";
 
   const retryBtn = $("btn-error-retry");
   retryBtn.classList.toggle("hidden", !onRetry);

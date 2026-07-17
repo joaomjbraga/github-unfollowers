@@ -42,11 +42,9 @@ async function checkForChanges() {
   let user;
   try {
     user = await bgFetch("/user", token);
-  } catch (e) {
-    if (e.isServerError) {
-      chrome.action.setBadgeText({ text: "!" });
-      chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
-    }
+  } catch {
+    chrome.action.setBadgeText({ text: "!" });
+    chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
     return;
   }
   if (!user) {
@@ -62,11 +60,9 @@ async function checkForChanges() {
       fetchAllPages(`/users/${user.login}/following`, token),
       fetchAllPages(`/users/${user.login}/followers`, token),
     ]);
-  } catch (e) {
-    if (e.isServerError) {
-      chrome.action.setBadgeText({ text: "!" });
-      chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
-    }
+  } catch {
+    chrome.action.setBadgeText({ text: "!" });
+    chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
     return;
   }
   if (!following || !followers) return;
@@ -149,8 +145,10 @@ async function bgFetch(path, token) {
       headers: buildHeaders(token),
       signal: AbortSignal.timeout(20_000),
     });
-  } catch {
-    return null;
+  } catch (e) {
+    const err = new Error(e.message || "Falha de rede");
+    err.isServerError = false;
+    throw err;
   }
   if (res.status === 401) return null;
   if (!res.ok) {
@@ -177,8 +175,10 @@ async function fetchAllPages(path, token) {
         headers: buildHeaders(token),
         signal: AbortSignal.timeout(20_000),
       });
-    } catch {
-      return null;
+    } catch (e) {
+      const err = new Error(e.message || "Falha de rede");
+      err.isServerError = false;
+      throw err;
     }
 
     if (res.status === 401) return null;
