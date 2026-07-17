@@ -30,5 +30,8 @@ export const state = { ...INITIAL_STATE };
 
 /** Restaura o estado para os valores iniciais sem trocar a referência do objeto. */
 export function resetState() {
-  Object.assign(state, INITIAL_STATE);
+  Object.assign(state, INITIAL_STATE, {
+    unfollowable: new Set(),
+    checkedProactive: new Set(),
+  });
 }

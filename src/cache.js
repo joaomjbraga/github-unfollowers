@@ -15,7 +15,7 @@ function cacheKey(path, page) {
 /** @returns {{data: unknown, etag: string|null} | null} */
 export function get(path, page) {
   const entry = memory.get(cacheKey(path, page));
-  if (entry && Date.now() - entry.ts < MEMORY_TTL) return entry;
+  if (entry && Date.now() - entry.ts < MEMORY_TTL) return { data: entry.data, etag: entry.etag };
   return null;
 }
 

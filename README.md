@@ -2,7 +2,7 @@
 
 # GitHub Unfollowers
 
-**Versão 1.4.0**
+**Versão 1.4.1**
 
 **Uma extensão para Chrome que analisa sua rede no GitHub: descubra quem não te segue de volta, quem você não segue e seus seguidores mútuos.**
 
@@ -40,7 +40,7 @@
 - 🌙 Tema dark/light com alternância
 - ⌨️ Atalhos de teclado e navegação por setas nas abas
 - ♿ Acessibilidade com ARIA roles e focus trap
-- 🚫 Detecção automática de perfis privados / inacessíveis
+- 🚫 Detecção automática de perfis privados / inacessíveis (via verificação pós-follow)
 - 📋 Histórico de eventos (follow, unfollow, inacessível)
 
 ---
@@ -124,7 +124,8 @@ github-unfollowers/
 │   ├── history.js          Histórico de comparações (30 dias)
 │   ├── theme.js            Gerenciamento de tema dark/light
 │   ├── whitelist.js        Gerenciamento da whitelist
-│   └── utils.js            Funções utilitárias (computeRelationshipLists, sleep)
+│   ├── utils.js            Funções utilitárias (computeRelationshipLists, sleep)
+│   └── dev.js              Mock de cenários de erro (modo desenvolvimento)
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png

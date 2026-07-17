@@ -12,6 +12,7 @@
 import { STORAGE_KEYS, GITHUB_API, BG_ALARM_INTERVAL_MINUTES, PAGE_SIZE } from "./constants.js";
 import { getStorage, setStorageMulti } from "./storage.js";
 import { computeRelationshipLists } from "./utils.js";
+import { mockFetch } from "./dev.js";
 
 const { snapshots: SNAP, pending: PEND, cachedLists, token: TOKEN_KEY } = STORAGE_KEYS;
 
@@ -22,12 +23,12 @@ const { snapshots: SNAP, pending: PEND, cachedLists, token: TOKEN_KEY } = STORAG
 chrome.runtime.onInstalled.addListener(setupAlarm);
 chrome.runtime.onStartup.addListener(setupAlarm);
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "bg_check") checkForChanges().catch(() => {});
+  if (alarm.name === "bg_check") checkForChanges().catch(console.error);
 });
 
 function setupAlarm() {
   chrome.alarms.create("bg_check", { periodInMinutes: BG_ALARM_INTERVAL_MINUTES });
-  checkForChanges().catch(() => {});
+  checkForChanges().catch(console.error);
 }
 
 // ---------------------------------------------------------------------------
@@ -38,16 +39,36 @@ async function checkForChanges() {
   const token = await getStorage(TOKEN_KEY);
   if (!token) return;
 
-  const user = await bgFetch("/user", token);
+  let user;
+  try {
+    user = await bgFetch("/user", token);
+  } catch (e) {
+    if (e.isServerError) {
+      chrome.action.setBadgeText({ text: "!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
+    }
+    return;
+  }
   if (!user) {
     chrome.action.setBadgeText({ text: "" });
     return;
   }
 
-  const [following, followers] = await Promise.all([
-    fetchAllPages(`/users/${user.login}/following`, token),
-    fetchAllPages(`/users/${user.login}/followers`, token),
-  ]);
+  chrome.action.setBadgeText({ text: "" });
+
+  let following, followers;
+  try {
+    [following, followers] = await Promise.all([
+      fetchAllPages(`/users/${user.login}/following`, token),
+      fetchAllPages(`/users/${user.login}/followers`, token),
+    ]);
+  } catch (e) {
+    if (e.isServerError) {
+      chrome.action.setBadgeText({ text: "!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#ff9500" });
+    }
+    return;
+  }
   if (!following || !followers) return;
 
   const { unfollowers, notFollowingBack, mutuals } = computeRelationshipLists({ followers, following });
@@ -121,7 +142,8 @@ async function checkForChanges() {
 async function bgFetch(path, token) {
   let res;
   try {
-    res = await fetch(`${GITHUB_API}${path}`, {
+    const mockRes = await mockFetch(path);
+    res = mockRes || await fetch(`${GITHUB_API}${path}`, {
       headers: buildHeaders(token),
       signal: AbortSignal.timeout(20_000),
     });
@@ -129,7 +151,12 @@ async function bgFetch(path, token) {
     return null;
   }
   if (res.status === 401) return null;
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.httpStatus = res.status;
+    err.isServerError = res.status >= 500;
+    throw err;
+  }
   return res.json();
 }
 
@@ -143,7 +170,8 @@ async function fetchAllPages(path, token) {
   while (true) {
     let res;
     try {
-      res = await fetch(`${GITHUB_API}${path}?per_page=${PAGE_SIZE}&page=${page}`, {
+      const mockRes = await mockFetch(path);
+      res = mockRes || await fetch(`${GITHUB_API}${path}?per_page=${PAGE_SIZE}&page=${page}`, {
         headers: buildHeaders(token),
         signal: AbortSignal.timeout(20_000),
       });
@@ -158,7 +186,12 @@ async function fetchAllPages(path, token) {
       await new Promise((r) => setTimeout(r, wait));
       continue;
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.httpStatus = res.status;
+      err.isServerError = res.status >= 500;
+      throw err;
+    }
 
     retries = 0;
     const data = await res.json();

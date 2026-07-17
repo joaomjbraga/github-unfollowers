@@ -6,6 +6,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.4.1] - 2026-07-16
+
+### Corrigido
+
+- **Mass-follow cancelado marcava usuários inocentes como inacessíveis** — ao cancelar "Seguir todos", usuários que nunca foram tentados eram incorretamente classificados como inacessíveis. Agora `runMassAction` rastreia `attemptedLogins` e apenas usuários realmente tentados são avaliados.
+- **`resetState()` não resetava Sets** — `unfollowable` e `checkedProactive` eram referências compartilhadas com `INITIAL_STATE`, então `Object.assign` nunca criava novos Sets. Agora `resetState()` cria novas instâncias.
+- **Badge "!" persistente no service worker** — quando um erro de servidor era detectado, o badge laranja "!" nunca era limpo mesmo que a API voltasse a funcionar. Agora o badge é limpo antes de recalcular novidades.
+- **Header desatualizado após refresh** — `state.user` só era buscado na primeira carga. Agora sempre é atualizado no refresh, mantendo avatar e contador de seguidores sincronizados.
+- **Async errors silenciados em abas** — `renderHistoryTab()` e `renderWhitelistTab()` eram async mas não tratavam erros. Agora erros são capturados com `.catch()`.
+- **Verificação pós-follow assume sucesso silenciosamente** — erros 403/429 na verificação GET eram ignorados sem explicação. Agora há comentário claro explicando que o PUT 204 é definitive.
+- **Cache vazava propriedade `ts`** — `cache.get()` retornava o objeto interno com timestamp, violando o contrato de retorno `{data, etag}`.
+- **URL de avatar fallback inválida** — whitelist usava `github.com/${login}.png` (404). Agora usa `avatars.githubusercontent.com/${login}`.
+
+### Alterado
+
+- **`fetchWithRetry` extraído em `api.js`** — lógica de retry, rate limit e tratamento de erros foi unificada em um helper compartilhado, eliminando ~50 linhas duplicadas entre `ghFetch` e `fetchPage`.
+- **`processMassFollowResult` extraída** — lógica pós-mass-follow (identificar inacessíveis + atualizar state) foi consolidada em uma função reutilizada por `handleFollowAll` e `resumePendingMassAction`.
+- **`showModal` removida** — função duplicada de `showConfirmModal` foi eliminada. Os 3 callers agora usam `showConfirmModal` com o parâmetro opcional `iconColor`.
+- **`sleep()` unificado** — removida duplicação entre `api.js` (local) e `utils.js` (exportado). `api.js` agora importa de `utils.js`.
+- **Performance em ações em massa** — loop usa index em vez de `pending.slice(1)` por iteração, eliminando O(n²) de alocações.
+- **Sets para membership tests** — `refreshUserData` agora usa `Set.has()` em vez de `Array.includes()` para testes de pertencimento, melhorando de O(n) para O(1) por operação.
+- **Progresso de ação em massa simplificado** — `runMassAction` retorna `attemptedLogins` além de `succeededLogins`, permitindo distinção correta entre "não tentado" e "falhou".
+
+### Removido
+
+- **`detectUnfollowableProactive`** — detecção proativa de perfis privados via `GET /users/{login}` removida. A condição `user_view_type === "private"` nunca coincidia (campo não existe na API pública do GitHub), resultando em chamadas API desperdiçadas e consumo de rate limit sem benefício. A detecção de privados já funciona via verificação GET em `followUser()`.
+- **`loadCheckedProactive`** — função de carregar estado de verificação proativa removida junto com a detecção.
+- **`showModal`** — função duplicada de modal de confirmação removida.
+- **`sleep()` local em `api.js`** — duplicata da função exportada em `utils.js`.
+
+---
+
 ## [1.4.0] - 2026-07-13
 
 ### Adicionado

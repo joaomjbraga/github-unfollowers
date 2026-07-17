@@ -171,7 +171,7 @@ function buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitel
   `;
 }
 
-function bindUserItemEvents(node, user, { isMutual, isNotFollowingBack, followUser, unfollowUser, onOpenProfile, whitelist }) {
+function bindUserItemEvents(node, user, { followUser, unfollowUser, onOpenProfile, whitelist }) {
   const actionBtn = node.querySelector("[data-action]");
   if (actionBtn) {
     actionBtn.addEventListener("click", (e) => {
@@ -375,7 +375,7 @@ export function renderWhitelistManager(whitelist, allUsers) {
   const container = $("whitelist-list");
   const entries = [...whitelist].map((login) => {
     const user = allUsers.find((u) => u.login === login);
-    return { login, avatar_url: user?.avatar_url ?? `https://github.com/${login}.png` };
+    return { login, avatar_url: user?.avatar_url ?? `https://avatars.githubusercontent.com/${login}` };
   });
 
   if (entries.length === 0) {
@@ -573,10 +573,15 @@ export function showLoading(msg) {
   $("loading-label").textContent = msg;
 }
 
-export function showError(msg) {
+export function showError(msg, { title, onRetry } = {}) {
   $("loading-state").classList.add("hidden");
   $("error-state").classList.remove("hidden");
-  $("main-error").textContent = msg;
+  $("main-error").innerHTML = msg;
+  if (title) $("error-state-title").textContent = title;
+
+  const retryBtn = $("btn-error-retry");
+  retryBtn.classList.toggle("hidden", !onRetry);
+  retryBtn.onclick = () => { retryBtn.classList.add("hidden"); onRetry?.(); };
 }
 
 export function showResults() {
@@ -593,7 +598,7 @@ export function setProgress(pct) {
 
 export function showConnectError(msg) {
   const el = $("connect-error");
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.classList.remove("hidden");
 }
 

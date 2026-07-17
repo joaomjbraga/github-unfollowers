@@ -36,3 +36,7 @@ export const BG_ALARM_INTERVAL_MINUTES = 5;
 export const VIRTUAL_SCROLL_THRESHOLD = 50;
 export const ITEM_HEIGHT_PX = 52;
 export const OVERSCAN_ITEMS = 10;
+
+// Dev mode — simulação de erros
+export const IS_DEV_MODE = false;
+export const DEV_STORAGE_KEY = "dev_mock_config";

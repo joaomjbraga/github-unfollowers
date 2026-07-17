@@ -2,6 +2,8 @@ import { state } from "./store.js";
 import { removeStorage } from "./storage.js";
 import * as cache from "./cache.js";
 import { STORAGE_KEYS, GITHUB_API, FETCH_TIMEOUT_MS, MAX_RETRIES, PAGE_SIZE } from "./constants.js";
+import { httpFriendlyMessage, sleep } from "./utils.js";
+import { mockFetch } from "./dev.js";
 
 // Re-exporta helpers de storage para que app.js não precise importar dois módulos
 export { getStorage, setStorage, setStorageMulti, removeStorage } from "./storage.js";
@@ -42,20 +44,41 @@ export function getRateLimitDelay() {
 // ---------------------------------------------------------------------------
 
 /**
- * Faz uma chamada autenticada à API do GitHub com retry automático.
- * @param {string} path  Caminho relativo (ex: "/user/following/octocat")
- * @param {"GET"|"PUT"|"DELETE"} method
- * @returns {Promise<unknown>}
+ * Constrói um Error com mensagem amigável a partir de uma Response de erro.
+ * @param {Response} res
+ * @returns {Promise<Error>}
  */
-export async function ghFetch(path, method = "GET") {
-  let attempt = 0;
+async function buildApiError(res) {
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("text/html")) {
+    const friendly = httpFriendlyMessage(res.status);
+    const err = new Error(friendly.html);
+    err.httpStatus = res.status;
+    err.isServerError = friendly.isServer;
+    return err;
+  }
+  const friendly = httpFriendlyMessage(res.status);
+  const errData = await res.json().catch(() => ({}));
+  const err = new Error(friendly.html || errData.message);
+  err.httpStatus = res.status;
+  err.isServerError = friendly.isServer;
+  return err;
+}
 
+/**
+ * Fetch com retry automático, rate limit e tratamento de erros.
+ * Retorna a Response quando ok ou 304; lança erro nos demais casos.
+ * @param {string} url
+ * @param {{ headers?: Record<string,string> }} [opts]
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, { headers } = {}) {
+  let attempt = 0;
   while (true) {
     let res;
     try {
-      res = await fetch(`${GITHUB_API}${path}`, {
-        method,
-        headers: buildHeaders(),
+      res = await fetch(url, {
+        headers,
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
     } catch (e) {
@@ -64,13 +87,14 @@ export async function ghFetch(path, method = "GET") {
 
     updateRateLimit(res.headers);
 
-    if (res.ok || res.status === 204) {
-      return method === "DELETE" || res.status === 204 ? null : res.json();
-    }
+    if (res.ok || res.status === 304) return res;
 
     if (res.status === 401) {
-      await removeStorage(STORAGE_KEYS.token);
-      state.token = null;
+      const isMock = res.headers.get("X-Mock-Response") === "true";
+      if (!isMock) {
+        await removeStorage(STORAGE_KEYS.token);
+        state.token = null;
+      }
       throw authError("Sessão expirada. Faça login novamente.");
     }
 
@@ -84,11 +108,26 @@ export async function ghFetch(path, method = "GET") {
       continue;
     }
 
-    const errData = await res.json().catch(() => ({}));
-    const err = new Error(errData.message || `HTTP ${res.status}`);
-    err.httpStatus = res.status;
-    throw err;
+    throw await buildApiError(res);
   }
+}
+
+/**
+ * Faz uma chamada autenticada à API do GitHub com retry automático.
+ * @param {string} path  Caminho relativo (ex: "/user/following/octocat")
+ * @param {"GET"|"PUT"|"DELETE"} method
+ * @returns {Promise<unknown>}
+ */
+export async function ghFetch(path, method = "GET") {
+  const mockRes = await mockFetch(path, method);
+  if (mockRes) {
+    if (mockRes.status === 401) throw authError("Sessão expirada. Faça login novamente.");
+    if (mockRes.status >= 400) throw await buildApiError(mockRes);
+    return method === "DELETE" || mockRes.status === 204 ? null : mockRes.json();
+  }
+
+  const res = await fetchWithRetry(`${GITHUB_API}${path}`, { headers: buildHeaders() });
+  return method === "DELETE" || res.status === 204 ? null : res.json();
 }
 
 // ---------------------------------------------------------------------------
@@ -100,27 +139,22 @@ export async function ghFetch(path, method = "GET") {
  */
 async function fetchPage(path, page) {
   const cached = cache.get(path, page);
-  const url = `${GITHUB_API}${path}?per_page=${PAGE_SIZE}&page=${page}`;
-  const headers = buildHeaders();
+  const headers = { ...buildHeaders() };
   if (cached?.etag) headers["If-None-Match"] = cached.etag;
 
-  let res;
-  try {
-    res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  } catch (e) {
-    throw wrapNetworkError(e);
+  const mockRes = await mockFetch(path);
+  if (mockRes) {
+    if (mockRes.status === 304 && cached) return cached.data;
+    if (mockRes.status === 401) throw authError("Sessão expirada. Faça login novamente.");
+    if (!mockRes.ok) throw await buildApiError(mockRes);
+    const data = await mockRes.json();
+    const etag = mockRes.headers.get("ETag");
+    if (etag) cache.set(path, page, data, etag);
+    return data;
   }
 
-  updateRateLimit(res.headers);
-
+  const res = await fetchWithRetry(`${GITHUB_API}${path}?per_page=${PAGE_SIZE}&page=${page}`, { headers });
   if (res.status === 304 && cached) return cached.data;
-
-  if (!res.ok) {
-    if (res.status === 401) throw authError("Sessão expirada. Faça login novamente.");
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || `HTTP ${res.status}`);
-  }
-
   const data = await res.json();
   const etag = res.headers.get("ETag");
   if (etag) cache.set(path, page, data, etag);
@@ -186,8 +220,4 @@ function wrapNetworkError(e) {
     return new Error("Sem conexão com a internet. Verifique sua rede.");
   }
   return e;
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
 }
