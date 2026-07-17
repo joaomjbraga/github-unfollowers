@@ -428,7 +428,9 @@ function showEmptyForTab(activeTab) {
 // ---------------------------------------------------------------------------
 
 export function updateStats(state) {
-  $("count-all").textContent = state.unfollowers.length;
+  $("count-all").textContent = state.whitelist?.size
+    ? state.unfollowers.filter((u) => !state.whitelist.has(u.login)).length
+    : state.unfollowers.length;
   $("count-mutual").textContent = state.mutuals.length;
 
   const nfbCount = (!state.showUnfollowable && state.unfollowable?.size)
@@ -473,7 +475,12 @@ export function renderList(state, actions = {}) {
   const userList = $("user-list");
   const isMutual = state.activeTab === "mutual";
   const isNotFollowingBack = state.activeTab === "not-following-back";
-  const hasUnfollowable = isNotFollowingBack && state.unfollowable?.size > 0;
+
+  // Conta apenas unfollowable que ainda estão em notFollowingBack
+  const activeUnfollowableCount = (isNotFollowingBack && state.unfollowable?.size)
+    ? state.notFollowingBack.filter((u) => state.unfollowable.has(u.login)).length
+    : 0;
+  const hasUnfollowable = activeUnfollowableCount > 0;
 
   $("btn-unfollow-all").style.display =
     isMutual || isNotFollowingBack || state.unfollowers.length === 0 ? "none" : "";
@@ -500,8 +507,7 @@ export function renderList(state, actions = {}) {
   if (hasUnfollowable) {
     const banner = $("unfollowable-banner");
     const bannerText = $("unfollowable-text");
-    const count = state.unfollowable.size;
-    bannerText.textContent = `${count} contas não podem ser seguidas automaticamente.`;
+    bannerText.textContent = `${activeUnfollowableCount} contas não podem ser seguidas automaticamente.`;
     $("btn-unfollowable-toggle").textContent = state.showUnfollowable ? "Ocultar" : "Mostrar";
     banner.classList.remove("hidden");
   } else {

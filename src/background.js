@@ -128,6 +128,8 @@ async function checkForChanges() {
   if (totalNew > 0) {
     chrome.action.setBadgeText({ text: String(totalNew) });
     chrome.action.setBadgeBackgroundColor({ color: "#e34c26" });
+  } else {
+    chrome.action.setBadgeText({ text: "" });
   }
 }
 
