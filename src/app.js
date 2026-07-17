@@ -392,7 +392,7 @@ async function refreshUserData({ silent = false } = {}) {
 // Follow / Unfollow individuais
 // ---------------------------------------------------------------------------
 
-async function unfollowUser(login) {
+async function unfollowUser(login, { skipSideEffects = false } = {}) {
   const item = $("user-list").querySelector(`[data-login="${login}"]`);
   const button = item?.querySelector("[data-action='unfollow']");
   if (button) { button.disabled = true; button.textContent = "..."; }
@@ -414,10 +414,12 @@ async function unfollowUser(login) {
       await addEvent({ type: "unfollowed", login: userData.login, avatar_url: userData.avatar_url });
     }
 
-    ui.removeUserItem(login);
-    ui.updateStats(state);
-    ui.renderList(state, makeListActions());
-    await persistState();
+    if (!skipSideEffects) {
+      ui.removeUserItem(login);
+      ui.updateStats(state);
+      ui.renderList(state, makeListActions());
+      await persistState();
+    }
     return { succeeded: true, unfollowable: false };
   } catch (e) {
     if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
@@ -426,7 +428,7 @@ async function unfollowUser(login) {
   }
 }
 
-async function followUser(login) {
+async function followUser(login, { skipSideEffects = false } = {}) {
   const item = $("user-list").querySelector(`[data-login="${login}"]`);
   const button = item?.querySelector("[data-action='follow']");
   if (button) { button.disabled = true; button.textContent = "..."; }
@@ -445,10 +447,12 @@ async function followUser(login) {
         if (verifyErr.httpStatus === 404 && attempt === 0) continue;
         if (verifyErr.httpStatus === 404) {
           await addUnfollowable([login]);
-          const userData = state.notFollowingBack.find((u) => u.login === login);
-          if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
-          ui.updateStats(state);
-          ui.renderList(state, makeListActions());
+          if (!skipSideEffects) {
+            const userData = state.notFollowingBack.find((u) => u.login === login);
+            if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
+            ui.updateStats(state);
+            ui.renderList(state, makeListActions());
+          }
           return { succeeded: false, unfollowable: true };
         }
         // Erros 403/429/etc. na verificação GET não invalidam o follow —
@@ -465,10 +469,12 @@ async function followUser(login) {
     // 403, 404, 422 = restrição permanente (perfil privado, bloqueado, spam)
     if (e.httpStatus === 403 || e.httpStatus === 404 || e.httpStatus === 422) {
       await addUnfollowable([login]);
-      const userData = state.notFollowingBack.find((u) => u.login === login);
-      if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
-      ui.updateStats(state);
-      ui.renderList(state, makeListActions());
+      if (!skipSideEffects) {
+        const userData = state.notFollowingBack.find((u) => u.login === login);
+        if (userData) await addEvent({ type: "unfollowable", login: userData.login, avatar_url: userData.avatar_url });
+        ui.updateStats(state);
+        ui.renderList(state, makeListActions());
+      }
       return { succeeded: false, unfollowable: true };
     }
     // Silencia erros durante ação em massa (apenas individual exibe toast)
@@ -515,7 +521,7 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
     if (state.cancelMassAction) break;
     const user = items[i];
     attemptedLogins.add(user.login);
-    const result = await actionFn(user.login);
+    const result = await actionFn(user.login, { skipSideEffects: true });
     if (result.succeeded) { done++; succeededLogins.add(user.login); }
     else if (result.unfollowable) { unfollowableLogins.add(user.login); }
     button.textContent = `${processingLabel} (${done}/${totalCount})`;
@@ -544,13 +550,18 @@ async function handleUnfollowAll() {
   // Exclui whitelisted da ação em massa
   const toUnfollow = state.unfollowers.filter((u) => !state.whitelist.has(u.login));
   if (toUnfollow.length === 0) return;
+
+  state.isProcessing = true;
   const confirmed = await showConfirmModal({
     title: "Deixar de seguir?",
     message: `Você está prestes a deixar de seguir <strong>${toUnfollow.length}</strong> usuário(s) que não te seguem de volta.`,
     confirmText: "Sim, deixar de seguir",
     iconColor: "var(--danger-hover)",
   });
-  if (!confirmed) return;
+  if (!confirmed) {
+    state.isProcessing = false;
+    return;
+  }
   await runMassAction({
     actionType: "unfollow", items: toUnfollow, actionFn: unfollowUser,
     button: btnUnfollowAll, otherButton: btnFollowAll,
@@ -568,13 +579,13 @@ async function processMassFollowResult({ attemptedLogins, succeededLogins, unfol
     }
   }
 
-  const confirmedUsers = state.notFollowingBack.filter((u) => !unfollowableLogins.has(u.login));
+  const confirmedUsers = state.notFollowingBack.filter((u) => succeededLogins.has(u.login));
   for (const userData of confirmedUsers) {
     state.following = [...state.following, userData];
     state.mutuals = [...state.mutuals, userData];
     await addEvent({ type: "followed", login: userData.login, avatar_url: userData.avatar_url });
   }
-  state.notFollowingBack = state.notFollowingBack.filter((u) => unfollowableLogins.has(u.login));
+  state.notFollowingBack = state.notFollowingBack.filter((u) => !succeededLogins.has(u.login));
   ui.updateStats(state);
   ui.renderList(state, makeListActions());
   await persistState();
@@ -583,13 +594,18 @@ async function processMassFollowResult({ attemptedLogins, succeededLogins, unfol
 async function handleFollowAll() {
   const followable = state.notFollowingBack.filter((u) => !state.unfollowable?.has(u.login));
   if (followable.length === 0) return;
+
+  state.isProcessing = true;
   const userConfirmed = await showConfirmModal({
     title: "Seguir de volta?",
     message: `Você está prestes a seguir <strong>${followable.length}</strong> usuário(s) que te seguem.`,
     confirmText: "Sim, seguir",
     iconColor: "var(--accent-emphasis)",
   });
-  if (!userConfirmed) return;
+  if (!userConfirmed) {
+    state.isProcessing = false;
+    return;
+  }
 
   const { succeededLogins, attemptedLogins, unfollowableLogins } = await runMassAction({
     actionType: "follow", items: followable, actionFn: followUser,
@@ -612,6 +628,7 @@ async function resumePendingMassAction() {
 
   if (items.length === 0) { await clearMassActionProgress().catch(() => {}); return; }
 
+  state.isProcessing = true;
   const userConfirmed = await showConfirmModal({
     title: isFollow ? "Seguir de volta?" : "Deixar de seguir?",
     message: isFollow
@@ -620,7 +637,11 @@ async function resumePendingMassAction() {
     confirmText: isFollow ? "Sim, seguir" : "Sim, deixar de seguir",
     iconColor: isFollow ? "var(--accent-emphasis)" : "var(--danger-hover)",
   });
-  if (!userConfirmed) { await clearMassActionProgress().catch(() => {}); return; }
+  if (!userConfirmed) {
+    state.isProcessing = false;
+    await clearMassActionProgress().catch(() => {});
+    return;
+  }
 
   const { succeededLogins, attemptedLogins, unfollowableLogins } = await runMassAction({
     actionType, items,
@@ -633,6 +654,10 @@ async function resumePendingMassAction() {
 
   if (isFollow) {
     await processMassFollowResult({ attemptedLogins, succeededLogins, unfollowableLogins });
+  } else {
+    ui.updateStats(state);
+    ui.renderList(state, makeListActions());
+    await persistState();
   }
 }
 
@@ -671,6 +696,7 @@ function handleSearchInput(event) {
 }
 
 async function handleRefresh() {
+  if (refreshInProgress) return;
   api.clearCache();
   state.user = null;
   resetViewState();
@@ -679,8 +705,13 @@ async function handleRefresh() {
 }
 
 async function handleLogout() {
-  await removeStorage(STORAGE_KEYS.token);
-  await removeStorage(UNFOLLOWABLE_KEY);
+  await removeStorage([
+    STORAGE_KEYS.token,
+    UNFOLLOWABLE_KEY,
+    CACHED_LISTS_KEY,
+    SNAP.unfollowers, SNAP.notFollowingBack, SNAP.mutuals, SNAP.initialized,
+    PEND.unfollowers, PEND.notFollowingBack, PEND.mutuals,
+  ]);
   await clearMassActionProgress().catch(() => {});
   api.clearCache();
   clearAutoRefresh();

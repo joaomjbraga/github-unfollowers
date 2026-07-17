@@ -481,9 +481,12 @@ export function renderList(state, actions = {}) {
     ? state.notFollowingBack.filter((u) => state.unfollowable.has(u.login)).length
     : 0;
   const hasUnfollowable = activeUnfollowableCount > 0;
+  const unfollowTargets = state.unfollowers.filter(
+    (u) => !state.whitelist?.has(u.login),
+  );
 
   $("btn-unfollow-all").style.display =
-    isMutual || isNotFollowingBack || state.unfollowers.length === 0 ? "none" : "";
+    isMutual || isNotFollowingBack || unfollowTargets.length === 0 ? "none" : "";
   $("btn-follow-all").classList.toggle(
     "hidden",
     !isNotFollowingBack || !state.notFollowingBack.some(
