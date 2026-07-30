@@ -1,24 +1,12 @@
-/**
- * Service Worker da extensão.
- *
- * Responsabilidade única: detectar mudanças nas listas de following/followers
- * enquanto o popup está fechado e gravar os "novos" em PENDING_KEYS para que
- * o popup os exiba com o badge "Novo" na próxima abertura.
- *
- * Não duplica lógica de api.js (que depende do popup). Aqui usamos fetch
- * diretamente porque o service worker não tem acesso ao `state` do popup.
- */
-
 import { STORAGE_KEYS, GITHUB_API, BG_ALARM_INTERVAL_MINUTES, PAGE_SIZE } from "./constants.js";
 import { getStorage, setStorageMulti } from "./storage.js";
 import { computeRelationshipLists } from "./utils.js";
 import { mockFetch } from "./dev.js";
+import { initI18n, t } from "./i18n.js";
 
 const { snapshots: SNAP, pending: PEND, cachedLists, token: TOKEN_KEY } = STORAGE_KEYS;
 
-// ---------------------------------------------------------------------------
-// Inicialização
-// ---------------------------------------------------------------------------
+initI18n();
 
 chrome.runtime.onInstalled.addListener(setupAlarm);
 chrome.runtime.onStartup.addListener(setupAlarm);
@@ -30,10 +18,6 @@ function setupAlarm() {
   chrome.alarms.create("bg_check", { periodInMinutes: BG_ALARM_INTERVAL_MINUTES });
   checkForChanges().catch(console.error);
 }
-
-// ---------------------------------------------------------------------------
-// Lógica principal
-// ---------------------------------------------------------------------------
 
 async function checkForChanges() {
   const token = await getStorage(TOKEN_KEY);
@@ -83,7 +67,6 @@ async function checkForChanges() {
     return;
   }
 
-  // Calcula novidades em relação ao último snapshot
   const [prevU, prevN, prevM] = await Promise.all([
     getStorage(SNAP.unfollowers).then((v) => v || []),
     getStorage(SNAP.notFollowingBack).then((v) => v || []),
@@ -98,10 +81,8 @@ async function checkForChanges() {
   const newN = notFollowingBack.filter((u) => !prevNSet.has(u.login));
   const newM = mutuals.filter((u) => !prevMSet.has(u.login));
 
-  // Sempre atualiza o cache visual
   const writes = { ...cacheUpdate };
 
-  // Só acumula nos PENDING se houver novidades
   if (newU.length > 0 || newN.length > 0 || newM.length > 0) {
     const [pendU, pendN, pendM] = await Promise.all([
       getStorage(PEND.unfollowers).then((v) => new Set(v || [])),
@@ -119,7 +100,6 @@ async function checkForChanges() {
 
   await setStorageMulti(writes);
 
-  // Atualiza badge do ícone com total de novidades
   const totalNew = newU.length + newN.length + newM.length;
   if (totalNew > 0) {
     chrome.action.setBadgeText({ text: String(totalNew) });
@@ -129,14 +109,6 @@ async function checkForChanges() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Fetch helpers locais (sem acesso ao state do popup)
-// ---------------------------------------------------------------------------
-
-/**
- * Fetch simples com timeout e verificação de 401.
- * @returns {Promise<unknown|null>} null em caso de 401
- */
 async function bgFetch(path, token) {
   let res;
   try {
@@ -146,7 +118,7 @@ async function bgFetch(path, token) {
       signal: AbortSignal.timeout(20_000),
     });
   } catch (e) {
-    const err = new Error(e.message || "Falha de rede");
+    const err = new Error(e.message || t("bgNetworkError"));
     err.isServerError = false;
     throw err;
   }
@@ -162,7 +134,6 @@ async function bgFetch(path, token) {
 
 const MAX_BG_RETRIES = 3;
 
-/** Busca todas as páginas de um endpoint paginado. */
 async function fetchAllPages(path, token) {
   const results = [];
   let page = 1;
@@ -176,7 +147,7 @@ async function fetchAllPages(path, token) {
         signal: AbortSignal.timeout(20_000),
       });
     } catch (e) {
-      const err = new Error(e.message || "Falha de rede");
+      const err = new Error(e.message || t("bgNetworkError"));
       err.isServerError = false;
       throw err;
     }

@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from manifest
+        id: version
+        run: echo "tag=v$(node -p "require('./manifest.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: tag_check
+        run: |
+          if git tag -l "${{ steps.version.outputs.tag }}" | grep -q .; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract changelog entry
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const md = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const ver = '${{ steps.version.outputs.tag }}'.replace(/^v/, '');
+            const start = md.indexOf('## [' + ver + ']');
+            if (start === -1) process.exit(1);
+            const after = md.indexOf('\n', start) + 1;
+            const endMatch = md.slice(after).match(/\n## \[|\n---\n/);
+            const end = endMatch ? after + endMatch.index : md.length;
+            const body = md.slice(start, end).trim();
+            fs.writeFileSync('release_body.md', body);
+          "
+
+      - name: Create tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create release
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release_body.md

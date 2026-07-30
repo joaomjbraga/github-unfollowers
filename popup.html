@@ -14,37 +14,37 @@
         <div class="token-step">
           <span class="token-step-num">1</span>
           <div class="token-step-body">
-            <strong class="token-step-title">Crie seu token</strong>
-            <span class="token-step-desc">Os escopos <code>read:user</code> + <code>user:follow</code> já vêm pré-selecionados. Role até o final da página e clique em <strong>Generate token</strong>.</span>
+            <strong class="token-step-title" data-i18n="tokenStep1Title">Crie seu token</strong>
+            <span class="token-step-desc" data-i18n="tokenStep1Desc" data-i18n-html="true">Os escopos <code>read:user</code> + <code>user:follow</code> já vêm pré-selecionados. Role até o final da página e clique em <strong>Generate token</strong>.</span>
           </div>
         </div>
-        <button class="btn btn-primary btn-create-token" id="btn-create-token" type="button">Abrir página de tokens no GitHub</button>
+        <button class="btn btn-primary btn-create-token" id="btn-create-token" type="button" data-i18n="btnCreateToken">Abrir página de tokens no GitHub</button>
         <div class="token-step">
           <span class="token-step-num">2</span>
           <div class="token-step-body">
-            <strong class="token-step-title">Copie o token</strong>
-            <span class="token-step-desc">Começa com <code>ghp_</code></span>
+            <strong class="token-step-title" data-i18n="tokenStep2Title">Copie o token</strong>
+            <span class="token-step-desc" data-i18n="tokenStep2Desc" data-i18n-html="true">Começa com <code>ghp_</code></span>
           </div>
         </div>
         <div class="token-step">
           <span class="token-step-num">3</span>
           <div class="token-step-body">
-            <strong class="token-step-title">Cole e conecte</strong>
-            <span class="token-step-desc">No campo abaixo, clique em "Conectar"</span>
+            <strong class="token-step-title" data-i18n="tokenStep3Title">Cole e conecte</strong>
+            <span class="token-step-desc" data-i18n="tokenStep3Desc" data-i18n-html="true">No campo abaixo, clique em "Conectar"</span>
           </div>
         </div>
       </div>
       <div class="field-group">
-        <input class="field-input" id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        <input class="field-input" id="token-input" type="password" data-i18n-placeholder="tokenInputPlaceholder" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
       </div>
       <button class="btn btn-primary" id="btn-connect">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M1 5.25A2.25 2.25 0 0 1 3.25 3h9.5A2.25 2.25 0 0 1 15 5.25v5.5A2.25 2.25 0 0 1 12.75 13h-9.5A2.25 2.25 0 0 1 1 10.75ZM3.25 4.5a.75.75 0 0 0-.75.75v.128l5.5 3.589 5.5-3.59V5.25a.75.75 0 0 0-.75-.75Zm9.25 2.867-4.215 2.748a1.75 1.75 0 0 1-1.87-.001L2.5 7.367v3.383c0 .414.336.75.75.75h9.5a.75.75 0 0 0 .75-.75Z"/>
         </svg>
-        Conectar
+        <span data-i18n="btnConnect">Conectar</span>
       </button>
       <div id="connect-error" class="error-box hidden" aria-live="polite"></div>
-      <a class="token-report" href="https://github.com/joaomjbraga/github-unfollowers/issues/new" target="_blank" rel="noopener">Reportar problema</a>
+      <a class="token-report" href="https://github.com/joaomjbraga/github-unfollowers/issues/new" target="_blank" rel="noopener" data-i18n="reportProblem">Reportar problema</a>
     </div>
 
     <!-- ── MAIN SCREEN ── -->
@@ -56,10 +56,10 @@
           <img class="header-avatar" id="header-avatar" src="" alt="" />
           <span class="header-login" id="header-login">—</span>
           <span class="header-sep">•</span>
-          <span class="header-stats"><span id="header-followers">0</span> seguidores</span>
+          <span class="header-stats"><span id="header-followers">0</span> <span data-i18n="headerFollowers" data-i18n-html="true">seguidores</span></span>
         </a>
         <div class="header-actions">
-          <button class="btn btn-ghost" id="btn-menu" title="Menu">
+          <button class="btn btn-ghost" id="btn-menu" data-i18n-title="menuTheme">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm13 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
             </svg>
@@ -67,25 +67,25 @@
         </div>
       </div>
 
-      <!-- Nav bar (Results / History / Whitelist) -->
+      <!-- Nav bar -->
       <div class="nav-bar" id="nav-bar" role="tablist" aria-label="Navegação principal">
-        <button class="nav-tab active" id="nav-tab-results" title="Listas (R)" role="tab" aria-selected="true" tabindex="0">
+        <button class="nav-tab active" id="nav-tab-results" title="Listas (R)" role="tab" aria-selected="true" tabindex="0" data-i18n-title="navResults" data-i18n-aria-label="navResults">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
             <path d="M2 2.75A.75.75 0 0 1 2.75 2h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 2.75Zm0 5A.75.75 0 0 1 2.75 7h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 7.75ZM2.75 12h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5Z"/>
           </svg>
-          Listas
+          <span data-i18n="navResults">Listas</span>
         </button>
-        <button class="nav-tab" id="nav-tab-history" title="Histórico (H)" role="tab" aria-selected="false" tabindex="-1">
+        <button class="nav-tab" id="nav-tab-history" title="Histórico (H)" role="tab" aria-selected="false" tabindex="-1" data-i18n-title="navHistory" data-i18n-aria-label="navHistory">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
             <path d="M1.643 3.143 1.43 1.35A.75.75 0 0 0 .25 1.46l.5 5a.75.75 0 0 0 .75.64h5a.75.75 0 0 0 0-1.5H2.324l.51-5.214A.75.75 0 0 0 1.643 3.143ZM8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM2.5 8a5.5 5.5 0 1 1 11 0 5.5 5.5 0 0 1-11 0Zm6.75-2.5a.75.75 0 0 0-1.5 0v2.75l1.5 1.5a.75.75 0 0 0 1.06-1.06L8.75 7.19V5.5Z"/>
           </svg>
-          Histórico
+          <span data-i18n="navHistory">Histórico</span>
         </button>
-        <button class="nav-tab" id="nav-tab-whitelist" title="Whitelist (W)" role="tab" aria-selected="false" tabindex="-1">
+        <button class="nav-tab" id="nav-tab-whitelist" title="Whitelist (W)" role="tab" aria-selected="false" tabindex="-1" data-i18n-title="navWhitelist" data-i18n-aria-label="navWhitelist">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
             <path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.91l3.023-2.489a.75.75 0 0 1 .954 0L11.5 12.41V2.75a.25.25 0 0 0-.25-.25Z"/>
           </svg>
-          Whitelist
+          <span data-i18n="navWhitelist">Whitelist</span>
         </button>
       </div>
 
@@ -125,18 +125,18 @@
             <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
           </svg>
         </div>
-        <div class="error-state-title" id="error-state-title">Algo deu errado</div>
+        <div class="error-state-title" id="error-state-title" data-i18n="errorTitle">Algo deu errado</div>
         <div class="error-box" id="main-error" aria-live="polite"></div>
-        <button class="btn btn-primary error-state-retry" id="btn-error-retry" type="button">Tentar novamente</button>
-        <a class="error-state-report" href="https://github.com/joaomjbraga/github-unfollowers/issues/new" target="_blank" rel="noopener">Reportar problema</a>
+        <button class="btn btn-primary error-state-retry" id="btn-error-retry" type="button" data-i18n="errorRetry">Tentar novamente</button>
+        <a class="error-state-report" href="https://github.com/joaomjbraga/github-unfollowers/issues/new" target="_blank" rel="noopener" data-i18n="reportProblem">Reportar problema</a>
       </div>
 
       <!-- Results state -->
       <div id="results-state" class="hidden">
         <div class="tabs" role="tablist" aria-label="Listas de usuários">
-          <button class="tab active" data-tab="all" id="tab-all" role="tab" aria-selected="true" tabindex="0">Não Seguidores <span class="tab-count" id="count-all">0</span></button>
-          <button class="tab" data-tab="not-following-back" role="tab" aria-selected="false" tabindex="-1">Não sigo <span class="tab-count" id="count-not-following-back">0</span></button>
-          <button class="tab" data-tab="mutual" role="tab" aria-selected="false" tabindex="-1">Mútuos <span class="tab-count" id="count-mutual">0</span></button>
+          <button class="tab active" data-tab="all" id="tab-all" role="tab" aria-selected="true" tabindex="0"><span data-i18n="tabAll">Não Seguidores</span> <span class="tab-count" id="count-all">0</span></button>
+          <button class="tab" data-tab="not-following-back" role="tab" aria-selected="false" tabindex="-1"><span data-i18n="tabNotFollowingBack">Não sigo</span> <span class="tab-count" id="count-not-following-back">0</span></button>
+          <button class="tab" data-tab="mutual" role="tab" aria-selected="false" tabindex="-1"><span data-i18n="tabMutual">Mútuos</span> <span class="tab-count" id="count-mutual">0</span></button>
         </div>
 
         <div class="toolbar">
@@ -144,21 +144,21 @@
             <svg class="search-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
             </svg>
-            <input class="search-input" id="search-input" type="text" placeholder="Filtrar por username... (/)" />
+            <input class="search-input" id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Filtrar por username... (/)" />
           </div>
         </div>
 
         <div id="unfollowable-banner" class="unfollowable-banner hidden">
           <span id="unfollowable-text" class="unfollowable-text"></span>
-          <button class="btn-unfollowable-toggle" id="btn-unfollowable-toggle" type="button">Mostrar</button>
+          <button class="btn-unfollowable-toggle" id="btn-unfollowable-toggle" type="button"></button>
         </div>
 
         <div class="list-header">
-          <span class="list-header-left" id="list-label">Não te seguem de volta</span>
+          <span class="list-header-left" id="list-label" data-i18n="listLabelUnfollowers">Não te seguem de volta</span>
           <div class="list-header-actions">
-            <button class="btn btn-ghost hidden" id="btn-cancel-mass" type="button">Cancelar</button>
-            <button class="follow-all-btn hidden" id="btn-follow-all">Seguir todos</button>
-            <button class="unfollow-all-btn" id="btn-unfollow-all">Parar de seguir todos</button>
+            <button class="btn btn-ghost hidden" id="btn-cancel-mass" type="button" data-i18n="btnCancel">Cancelar</button>
+            <button class="follow-all-btn hidden" id="btn-follow-all" data-i18n="btnFollowAll">Seguir todos</button>
+            <button class="unfollow-all-btn" id="btn-unfollow-all" data-i18n="btnUnfollowAll">Parar de seguir todos</button>
           </div>
         </div>
 
@@ -166,21 +166,21 @@
 
         <div id="empty-filtered" class="state-center hidden">
           <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/></svg>
-          <p>Nenhum resultado para este filtro.</p>
+          <p data-i18n="emptyFiltered">Nenhum resultado para este filtro.</p>
         </div>
         <div id="all-following-back" class="state-center hidden">
           <svg width="32" height="32" viewBox="0 0 16 16" fill="currentColor" style="color:var(--accent-emphasis)">
             <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16Zm3.78-9.72a.751.751 0 0 0-.018-1.042.751.751 0 0 0-1.042-.018L6.75 9.19 5.28 7.72a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042l2 2a.75.75 0 0 0 1.06 0Z"/>
           </svg>
-          <p id="all-following-back-msg"><strong>Tudo certo!</strong></p>
+          <p id="all-following-back-msg"></p>
         </div>
       </div>
 
       <!-- History state -->
       <div id="history-state" class="hidden sub-screen">
         <div class="sub-screen-header">
-          <span class="sub-screen-title">Histórico <span class="sub-screen-hint">30 dias</span></span>
-          <button class="btn btn-ghost btn-xs" id="btn-clear-history">Limpar</button>
+          <span class="sub-screen-title"><span data-i18n="historyTitle">Histórico</span> <span class="sub-screen-hint" data-i18n="historyHint">30 dias</span></span>
+          <button class="btn btn-ghost btn-xs" id="btn-clear-history" data-i18n="btnClearHistory">Limpar</button>
         </div>
         <div class="user-list" id="history-list"></div>
       </div>
@@ -188,7 +188,7 @@
       <!-- Whitelist state -->
       <div id="whitelist-state" class="hidden sub-screen">
         <div class="sub-screen-header">
-          <span class="sub-screen-title">Whitelist <span class="sub-screen-hint">Ignorados</span></span>
+          <span class="sub-screen-title"><span data-i18n="whitelistTitle">Whitelist</span> <span class="sub-screen-hint" data-i18n="whitelistHint">Ignorados</span></span>
         </div>
         <div class="user-list" id="whitelist-list"></div>
       </div>
@@ -199,7 +199,7 @@
     <div id="profile-overlay" class="profile-overlay hidden"></div>
     <div id="profile-panel" class="profile-panel" role="dialog" aria-modal="true" aria-label="Perfil do utilizador">
       <div class="profile-panel-header">
-        <button class="btn-icon" id="profile-close" title="Fechar (Esc)">
+        <button class="btn-icon" id="profile-close" data-i18n-title="profileClose">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/>
           </svg>
@@ -231,27 +231,27 @@
         <div class="profile-stats">
           <div class="profile-stat">
             <span class="profile-stat-value" id="profile-followers-count">—</span>
-            <span class="profile-stat-label">seguidores</span>
+            <span class="profile-stat-label" data-i18n="profileFollowers">seguidores</span>
           </div>
           <div class="profile-stat-sep"></div>
           <div class="profile-stat">
             <span class="profile-stat-value" id="profile-following-count">—</span>
-            <span class="profile-stat-label">seguindo</span>
+            <span class="profile-stat-label" data-i18n="profileFollowing">seguindo</span>
           </div>
           <div class="profile-stat-sep"></div>
           <div class="profile-stat">
             <span class="profile-stat-value" id="profile-repos-count">—</span>
-            <span class="profile-stat-label">repos</span>
+            <span class="profile-stat-label" data-i18n="profileRepos">repos</span>
           </div>
         </div>
 
         <button class="btn-whitelist-panel" id="profile-whitelist-btn">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.91l3.023-2.489a.75.75 0 0 1 .954 0L11.5 12.41V2.75a.25.25 0 0 0-.25-.25Z"/></svg>
-          <span>Ignorar sempre</span>
+          <span data-i18n="profileWhitelistAdd">Ignorar sempre</span>
         </button>
 
         <div class="profile-repos-section">
-          <span class="profile-section-label">Repositórios populares</span>
+          <span class="profile-section-label" data-i18n="profilePopularRepos">Repositórios populares</span>
           <div id="profile-repos-list"></div>
         </div>
       </div>
@@ -260,15 +260,30 @@
     <!-- ── DEV PANEL ── -->
     <div id="dev-panel" class="dev-panel hidden">
       <div class="dev-header">
-        <span class="dev-title">Simulação de Erros</span>
-        <button id="dev-close" class="dev-close" title="Fechar">&times;</button>
+        <span class="dev-title" data-i18n="devTitle">Simulação de Erros</span>
+        <button id="dev-close" class="dev-close" data-i18n-title="devClose">&times;</button>
       </div>
       <div class="dev-body">
-        <p class="dev-description">Selecione um cenário para simular comportamento da API.</p>
+        <p class="dev-description" data-i18n="devDescription">Selecione um cenário para simular comportamento da API.</p>
         <div id="dev-scenarios" class="dev-scenarios"></div>
-        <button id="dev-clear" class="dev-clear">Limpar simulação</button>
-        <p class="dev-hint">As configurações persistem no armazenamento local.</p>
+        <button id="dev-clear" class="dev-clear" data-i18n="devClear">Limpar simulação</button>
+        <p class="dev-hint" data-i18n="devHint">As configurações persistem no armazenamento local.</p>
       </div>
+    </div>
+
+    <!-- ── LANGUAGE PICKER ── -->
+    <div id="lang-picker" class="lang-picker hidden">
+      <div class="lang-picker-header">
+        <span class="lang-picker-title" data-i18n="langPickerTitle">Selecionar idioma</span>
+        <button id="lang-picker-close" class="lang-picker-close" data-i18n-title="profileClose">&times;</button>
+      </div>
+      <div class="lang-picker-search-wrap">
+        <svg class="lang-picker-search-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
+        </svg>
+        <input class="lang-picker-search" id="lang-picker-search" type="text" data-i18n-placeholder="langPickerSearchPlaceholder" placeholder="Pesquisar idioma..." />
+      </div>
+      <div class="lang-picker-list" id="lang-picker-list"></div>
     </div>
 
     <!-- ── MODAL ── -->
@@ -279,17 +294,17 @@
             <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
           </svg>
         </div>
-        <h3 class="modal-title" id="modal-title">Deixar de seguir?</h3>
-        <p class="modal-text" id="modal-text">Você está prestes a deixar de seguir <strong id="modal-count">0</strong> usuário(s).</p>
+        <h3 class="modal-title" id="modal-title"></h3>
+        <p class="modal-text" id="modal-text"></p>
         <div class="modal-actions">
-          <button class="btn btn-ghost modal-cancel" id="modal-cancel">Cancelar</button>
-          <button class="btn btn-primary modal-confirm" id="modal-confirm">Sim, deixar de seguir</button>
+          <button class="btn btn-ghost modal-cancel" id="modal-cancel" data-i18n="modalCancel">Cancelar</button>
+          <button class="btn btn-primary modal-confirm" id="modal-confirm"></button>
         </div>
       </div>
     </div>
 
     <!-- Dica de atalhos -->
-    <div class="shortcuts-hint">1·2·3 abas &nbsp;|&nbsp; / busca &nbsp;|&nbsp; H hist. &nbsp;|&nbsp; W wlist &nbsp;|&nbsp; T tema &nbsp;|&nbsp; Esc fecha</div>
+    <div class="shortcuts-hint" data-i18n="shortcutsHint">1·2·3 abas &nbsp;|&nbsp; / busca &nbsp;|&nbsp; H hist. &nbsp;|&nbsp; W wlist &nbsp;|&nbsp; T tema &nbsp;|&nbsp; Esc fecha</div>
 
     <!-- ── MENU DROPDOWN ── -->
     <div id="menu-overlay" class="menu-overlay hidden"></div>
@@ -301,46 +316,52 @@
         <svg class="icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.657-8.157a.75.75 0 0 1 0 1.061l-1.061 1.06a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.06-1.06a.75.75 0 0 1 1.06 0Zm-9.193 9.193a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 1 1-1.061-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0ZM3 8a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 3 8Zm13 0a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 16 8Zm-8 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Zm5.657-1.343a.75.75 0 0 1 1.06 1.06l-1.06 1.061a.75.75 0 0 1-1.061-1.06l1.06-1.061ZM2.343 2.343a.75.75 0 0 1 1.061 0l1.06 1.06a.75.75 0 0 1-1.06 1.061l-1.06-1.06a.75.75 0 0 1 0-1.061Z"/>
         </svg>
-        <span>Alternar tema</span>
+        <span data-i18n="menuTheme">Alternar tema</span>
+      </button>
+      <button class="menu-item" role="menuitem" id="menu-language">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM2.6 5.5h2.3a10.7 10.7 0 0 0-.5 3.099V9H2.115a6.525 6.525 0 0 1-.424-2.258c0-.427.037-.846.109-1.256l.8.014Zm7.8 2.5v.4c0 .708-.237 1.224-.54 1.54-.303.317-.678.56-1.078.56-.4 0-.775-.243-1.078-.56-.303-.316-.54-.832-.54-1.54V8h1.5v.4c0 .625.177.707.618.707.44 0 .618-.082.618-.707V8H10.4ZM8 2.5a4.5 4.5 0 0 1 2.4 8.278l-.771.42-.003.001a8.7 8.7 0 0 1-1.628.797l-.12.04v.001l-.001.001c-.254.083-.522.152-.81.203l-.522.092-.411-1.44.522-.094c.212-.038.41-.088.593-.145l.12-.042v-.002l.002-.001a7.2 7.2 0 0 0 1.126-.553l.276-.162A3 3 0 0 0 9.158 8.5H9V7h3.47a6.48 6.48 0 0 1 0 1H9v.4c0 .303.086.515.218.695l.108.128a5.3 5.3 0 0 0 .56.522l-.178.28-1.413.698-.202.107-.187-.12A4.66 4.66 0 0 1 7.2 9.74l-.148-.253L7.2 9.4a1.29 1.29 0 0 0 .23-.733V8H4.53a6.48 6.48 0 0 1 0-1H7.43V5h-1.5v.5h-2.8A6.48 6.48 0 0 1 4.5 3.234l.462-.3.492.455A1.7 1.7 0 0 0 6.5 4h.5v1h1V3.5h-.5a3.2 3.2 0 0 1-2.8-1.585A6.5 6.5 0 0 1 8 2.5Z"/>
+        </svg>
+        <span id="menu-language-label">Idioma: PT</span>
       </button>
       <button class="menu-item" role="menuitem" id="menu-refresh">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"/>
         </svg>
-        <span>Recarregar dados</span>
+        <span data-i18n="menuRefresh">Recarregar dados</span>
       </button>
       <div class="menu-separator" role="separator"></div>
       <button class="menu-item" role="menuitem" id="menu-export">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 .5a.75.75 0 0 0-.75.75v10.69l-2.22-2.22a.749.749 0 0 0-1.275.326.749.749 0 0 0 .215.734l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.749.749 0 0 0 .326-1.275.749.749 0 0 0-.734-.215L8.75 11.94V1.25A.75.75 0 0 0 8 .5Z"/>
         </svg>
-        <span>Exportar dados</span>
+        <span data-i18n="menuExport">Exportar dados</span>
       </button>
       <button class="menu-item" role="menuitem" id="menu-import">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 .5a.75.75 0 0 1 .75.75v6.19l2.22-2.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.22 2.22V1.25A.75.75 0 0 1 8 .5ZM2.5 13.5a.75.75 0 0 0 0 1.5h11a.75.75 0 0 0 0-1.5Z"/>
         </svg>
-        <span>Importar dados</span>
+        <span data-i18n="menuImport">Importar dados</span>
       </button>
       <div class="menu-separator" role="separator"></div>
       <button class="menu-item" role="menuitem" id="menu-dev" style="display:none">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M0 3.75C0 2.784.784 2 1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25ZM6.25 6a.75.75 0 0 1 .75.75v1.5h1.5a.75.75 0 0 1 0 1.5h-1.5v1.5a.75.75 0 0 1-1.5 0v-1.5h-1.5a.75.75 0 0 1 0-1.5h1.5v-1.5A.75.75 0 0 1 6.25 6Z"/>
         </svg>
-        <span>Simular erros</span>
+        <span data-i18n="menuDev">Simular erros</span>
       </button>
       <div class="menu-separator" role="separator"></div>
       <a class="menu-item" role="menuitem" id="menu-report" href="https://github.com/joaomjbraga/github-unfollowers/issues/new" target="_blank" rel="noopener">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm9 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM6.25 6a.75.75 0 0 0 0 1.5h.75v1.75a.75.75 0 0 0 1.5 0v-2.5A.75.75 0 0 0 7.75 6Z"/>
         </svg>
-        <span>Reportar problema</span>
+        <span data-i18n="menuReport">Reportar problema</span>
       </a>
       <button class="menu-item menu-item-danger" role="menuitem" id="menu-logout">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M2 2.75C2 1.784 2.784 1 3.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 2 13.25Zm9.06 1.97a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1 0 1.06l-3 3a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.72-1.72H6.75a.75.75 0 0 1 0-1.5h6.031l-1.72-1.72a.75.75 0 0 1 0-1.06Z"/>
         </svg>
-        <span>Desconectar</span>
+        <span data-i18n="menuLogout">Desconectar</span>
       </button>
     </div>
 

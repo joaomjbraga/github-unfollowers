@@ -4,6 +4,7 @@ import * as cache from "./cache.js";
 import { STORAGE_KEYS, GITHUB_API, FETCH_TIMEOUT_MS, MAX_RETRIES, PAGE_SIZE } from "./constants.js";
 import { httpFriendlyMessage, sleep } from "./utils.js";
 import { mockFetch } from "./dev.js";
+import { t } from "./i18n.js";
 
 // Re-exporta helpers de storage para que app.js não precise importar dois módulos
 export { getStorage, setStorage, setStorageMulti, removeStorage } from "./storage.js";
@@ -96,7 +97,7 @@ async function fetchWithRetry(url, { headers, method = "GET" } = {}) {
         await removeStorage(STORAGE_KEYS.token);
         state.token = null;
       }
-      throw authError("Sessão expirada. Faça login novamente.");
+      throw authError(t("connectErrorSession"));
     }
 
     const retryable = [429, 500, 502, 503, 504].includes(res.status);
@@ -122,7 +123,7 @@ async function fetchWithRetry(url, { headers, method = "GET" } = {}) {
 export async function ghFetch(path, method = "GET") {
   const mockRes = await mockFetch(path, method);
   if (mockRes) {
-    if (mockRes.status === 401) throw authError("Sessão expirada. Faça login novamente.");
+    if (mockRes.status === 401) throw authError(t("connectErrorSession"));
     if (mockRes.status >= 400) throw await buildApiError(mockRes);
     return method === "DELETE" || mockRes.status === 204 ? null : mockRes.json();
   }
@@ -146,7 +147,7 @@ async function fetchPage(path, page) {
   const mockRes = await mockFetch(path);
   if (mockRes) {
     if (mockRes.status === 304 && cached) return cached.data;
-    if (mockRes.status === 401) throw authError("Sessão expirada. Faça login novamente.");
+    if (mockRes.status === 401) throw authError(t("connectErrorSession"));
     if (!mockRes.ok) throw await buildApiError(mockRes);
     const data = await mockRes.json();
     const etag = mockRes.headers.get("ETag");
@@ -215,10 +216,10 @@ function authError(message) {
 
 function wrapNetworkError(e) {
   if (e.name === "AbortError" || e.name === "TimeoutError") {
-    return new Error("A requisição excedeu o tempo limite. Verifique sua conexão.");
+    return new Error(t("apiTimeout"));
   }
   if (e instanceof TypeError) {
-    return new Error("Sem conexão com a internet. Verifique sua rede.");
+    return new Error(t("apiNetworkError"));
   }
   return e;
 }

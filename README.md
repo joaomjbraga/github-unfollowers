@@ -53,6 +53,8 @@
 - Busca por username em tempo real
 - Links diretos para o perfil de cada usuário
 - Badge no ícone com novos não-seguidores
+- **Suporte a 16 idiomas com deteção automática**
+- **Seletor de idioma com pesquisa**
 
 </td>
 <td>
@@ -159,6 +161,7 @@ github-unfollowers/
 │   ├── constants.js        Constantes compartilhadas
 │   ├── dom.js              Helpers $() e $$()
 │   ├── history.js          Histórico de eventos (30 dias)
+│   ├── i18n.js             Internacionalização (16 idiomas)
 │   ├── theme.js            Gerenciamento de tema dark/light
 │   ├── whitelist.js        Gerenciamento da whitelist
 │   ├── utils.js            Funções utilitárias

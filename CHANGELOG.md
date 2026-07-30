@@ -6,6 +6,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.5.0] - 2026-07-30
+
+### Adicionado
+
+- **Suporte multilíngue** — sistema de internacionalização (i18n) com deteção automática do idioma do navegador e 16 idiomas disponíveis: Português, English, 中文 (Chinês), Español, हिन्दी (Hindi), العربية (Árabe), Français, Deutsch, 日本語 (Japonês), Русский (Russo), 한국어 (Coreano), Italiano, Türkçe (Turco), Tiếng Việt (Vietnamita), Polski (Polaco) e Nederlands (Holandês).
+- **Seletor de idioma** — painel com lista de todos os idiomas, barra de pesquisa para filtrar por nome nativo, nome em inglês ou código, e checkmark indicando o idioma atual.
+- **Persistência** — o idioma escolhido é salvo no `chrome.storage.local` e mantido entre sessões.
+
+### Alterado
+
+- **Localização completa da interface** — todas as strings da extensão (telas de token, listas, perfil, modais, menu, erros HTTP, etc.) agora usam o sistema de tradução.
+- **Formatação localizada** — números (`toLocaleString`) e datas (`Intl.RelativeTimeFormat`) usam o locale ativo.
+- **Clique em "Idioma" no menu** — agora abre um seletor visual com todos os idiomas em vez de ciclar entre PT e EN.
+
+### Corrigido
+
+- **`textContent` removia elementos filhos** — `data-i18n` removido de elementos pai que continham SVG ou `<span class="tab-count">`, evitando que a tradução destruísse ícones e contadores.
+- **Interpolação `{count}` no header** — chave `headerFollowers` simplificada para "seguidores"/"followers" sem `{count}`, já que o número é renderizado separadamente.
+- **Race condition na inicialização** — `initI18n()` e `applyI18nToDOM()` agora são chamados dentro de `init()` em `app.js`, garantindo ordem correta.
+
+---
+
 ## [1.4.3] - 2026-07-17
 
 ### Corrigido

@@ -9,12 +9,9 @@ import { addEvent, loadHistory, clearHistory, HISTORY_STORAGE_KEY } from "./hist
 import { loadWhitelist, addToWhitelist, removeFromWhitelist, WHITELIST_STORAGE_KEY } from "./whitelist.js";
 import { initTheme, toggleTheme, applyTheme, saveTheme } from "./theme.js";
 import { getConfig, setConfig, getScenarios } from "./dev.js";
+import { t, tHtml, setLocale, getLocale, initI18n, applyI18nToDOM, getIntlLocale, SUPPORTED_LOCALES } from "./i18n.js";
 
 const { snapshots: SNAP, pending: PEND, cachedLists: CACHED_LISTS_KEY, massActionProgress: MASS_ACTION_KEY, unfollowableLogins: UNFOLLOWABLE_KEY } = STORAGE_KEYS;
-
-// ---------------------------------------------------------------------------
-// Elementos DOM
-// ---------------------------------------------------------------------------
 
 const tokenInput = $("token-input");
 const btnConnect = $("btn-connect");
@@ -31,18 +28,9 @@ const modalTitle = $("modal-title");
 const modalText = $("modal-text");
 const modalIcon = document.querySelector(".modal-icon");
 
-// ---------------------------------------------------------------------------
-// Estado da aplicação (extensões ao store)
-// ---------------------------------------------------------------------------
-
-/** @type {Set<string>} */
 state.whitelist = new Set();
 /** @type {"dark"|"light"} */
 let currentTheme = "dark";
-
-// ---------------------------------------------------------------------------
-// Auto-refresh
-// ---------------------------------------------------------------------------
 
 let refreshTimer = null;
 let searchTimeout = null;
@@ -59,10 +47,6 @@ function scheduleAutoRefresh() {
   }, AUTO_REFRESH_MS);
 }
 
-// ---------------------------------------------------------------------------
-// Unfollowable (perfis privados / restrições)
-// ---------------------------------------------------------------------------
-
 /** @param {string[]} logins */
 async function addUnfollowable(logins) {
   if (!logins.length) return;
@@ -75,7 +59,6 @@ async function loadUnfollowable() {
   state.unfollowable = new Set(Array.isArray(raw) ? raw : []);
 }
 
-/** Persite as listas de relacionamento no storage para que reabrir a extensão reflita o estado atual. */
 async function persistState() {
   await setStorageMulti({
     [CACHED_LISTS_KEY]: {
@@ -86,15 +69,12 @@ async function persistState() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// UI helpers
-// ---------------------------------------------------------------------------
-
 function setUserHeader(user) {
+  const locale = getIntlLocale();
   $("header-user").href = `https://github.com/${user.login}`;
   $("header-login").textContent = user.login;
   $("header-avatar").src = user.avatar_url;
-  $("header-followers").textContent = (user.followers ?? 0).toLocaleString("pt-BR");
+  $("header-followers").textContent = (user.followers ?? 0).toLocaleString(locale);
 }
 
 function setTabSelected(container, activeEl) {
@@ -111,17 +91,12 @@ function resetViewState() {
   state.query = "";
   state.sortBy = "default";
   searchInput.value = "";
-  $("list-label").textContent = "Não te seguem de volta";
+  $("list-label").textContent = t("listLabelUnfollowers");
   setTabSelected($("results-state").querySelector(".tabs"), $("tab-all"));
   showMainTab("results");
 }
 
-// ---------------------------------------------------------------------------
-// Sub-telas dentro da tela principal
-// ---------------------------------------------------------------------------
-
 function showMainTab(tab) {
-  // tab: "results" | "history" | "whitelist"
   $("results-state").classList.toggle("hidden", tab !== "results");
   $("history-state").classList.toggle("hidden", tab !== "history");
   $("whitelist-state").classList.toggle("hidden", tab !== "whitelist");
@@ -143,7 +118,6 @@ async function renderWhitelistTab() {
   const allUsers = [...state.following, ...state.followers];
   ui.renderWhitelistManager(state.whitelist, allUsers);
 
-  // Bind remove buttons
   $("whitelist-list").querySelectorAll("[data-remove]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const login = btn.dataset.remove;
@@ -155,10 +129,6 @@ async function renderWhitelistTab() {
     });
   });
 }
-
-// ---------------------------------------------------------------------------
-// Modal de confirmação genérico
-// ---------------------------------------------------------------------------
 
 function showConfirmModal({ title, message, confirmText, confirmClass = "btn-primary", iconColor }) {
   return new Promise((resolve) => {
@@ -197,10 +167,6 @@ function showConfirmModal({ title, message, confirmText, confirmClass = "btn-pri
   });
 }
 
-// ---------------------------------------------------------------------------
-// Painel de perfil
-// ---------------------------------------------------------------------------
-
 function makeListActions() {
   return {
     followUser: handleFollowUser,
@@ -210,7 +176,6 @@ function makeListActions() {
   };
 }
 
-/** Wrapper: follow individual com pós-processamento de state */
 async function handleFollowUser(login) {
   const result = await followUser(login);
   if (!result.succeeded) return;
@@ -228,19 +193,16 @@ async function handleFollowUser(login) {
 }
 
 async function handleOpenProfile(user, mode) {
-  // Modo "whitelist" — toggle direto sem abrir painel
   if (mode === "whitelist") {
     await handleWhitelistToggle(user.login);
     return;
   }
 
-  // Abre painel e busca dados extras
   ui.openProfilePanel(user, {
     whitelist: state.whitelist,
     onWhitelistToggle: handleWhitelistToggle,
   });
 
-  // Busca dados detalhados + repos em paralelo
   try {
     const [fullUser, repos] = await Promise.all([
       api.ghFetch(`/users/${user.login}`),
@@ -252,16 +214,14 @@ async function handleOpenProfile(user, mode) {
     ui.renderProfileRepos([]);
   }
 
-  // Bind botão whitelist dentro do painel
   $("profile-whitelist-btn").onclick = async () => {
     await handleWhitelistToggle(user.login);
-    // Reatualiza o painel
     const updated = state.whitelist.has(user.login);
     const wlBtn = $("profile-whitelist-btn");
     wlBtn.classList.toggle("is-whitelisted", updated);
     wlBtn.innerHTML = updated
-      ? `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Z"/></svg> <span>Remover da whitelist</span>`
-      : `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.91l3.023-2.489a.75.75 0 0 1 .954 0L11.5 12.41V2.75a.25.25 0 0 0-.25-.25Z"/></svg> <span>Ignorar sempre</span>`;
+      ? `${ICON_BOOKMARK_FILL} <span>${escHtml(t("profileWhitelistRemove"))}</span>`
+      : `${ICON_BOOKMARK} <span>${escHtml(t("profileWhitelistAdd"))}</span>`;
   };
 }
 
@@ -277,10 +237,6 @@ async function handleWhitelistToggle(login) {
   ui.renderList(state, makeListActions());
 }
 
-// ---------------------------------------------------------------------------
-// Carregamento de dados
-// ---------------------------------------------------------------------------
-
 let refreshInProgress = false;
 
 async function refreshUserData({ silent = false } = {}) {
@@ -288,7 +244,7 @@ async function refreshUserData({ silent = false } = {}) {
   refreshInProgress = true;
 
   if (!silent) {
-    ui.showLoading("Obtendo seu perfil...");
+    ui.showLoading(t("loadingProfile"));
     ui.setProgress(5);
   }
 
@@ -297,18 +253,17 @@ async function refreshUserData({ silent = false } = {}) {
     setUserHeader(state.user);
     if (!silent) ui.setProgress(15);
 
-    if (!silent) ui.showLoading("Carregando lista de seguindo...");
+    if (!silent) ui.showLoading(t("loadingFollowing"));
     state.following = await api.fetchFollowing(state.user.login);
     if (!silent) ui.setProgress(50);
 
-    if (!silent) ui.showLoading("Carregando lista de seguidores...");
+    if (!silent) ui.showLoading(t("loadingFollowers"));
     state.followers = await api.fetchFollowers(state.user.login);
     if (!silent) ui.setProgress(90);
 
-    if (!silent) ui.showLoading("Calculando...");
+    if (!silent) ui.showLoading(t("loadingCalculating"));
     Object.assign(state, computeRelationshipLists({ followers: state.followers, following: state.following }));
 
-    // Recarrega unfollowable do storage (pode ter sido atualizado durante mass action)
     await loadUnfollowable();
 
     const [pendingU, pendingN, pendingM, prevU, prevN, prevM, initialized] = await Promise.all([
@@ -338,7 +293,6 @@ async function refreshUserData({ silent = false } = {}) {
       state.newNotFollowingBack = state.notFollowingBack.filter((u) => newN.has(u.login));
       state.newMutuals = state.mutuals.filter((u) => newM.has(u.login));
 
-      // Registra no histórico (apenas novidades desta sessão)
       for (const u of state.unfollowers) {
         if (!prevUSet.has(u.login)) {
           await addEvent({ type: "unfollowed", login: u.login, avatar_url: u.avatar_url });
@@ -378,7 +332,7 @@ async function refreshUserData({ silent = false } = {}) {
     api.persistCache().catch(() => {});
   } catch (e) {
     if (e.isAuthError) {
-      ui.showConnectError("Sessão expirada. Seu token foi removido. Faça login novamente.");
+      ui.showConnectError(t("connectErrorSession"));
       ui.showToken();
     } else if (!silent) {
       ui.showError(e.message, { onRetry: () => refreshUserData() });
@@ -388,10 +342,6 @@ async function refreshUserData({ silent = false } = {}) {
     refreshInProgress = false;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Follow / Unfollow individuais
-// ---------------------------------------------------------------------------
 
 async function unfollowUser(login, { skipSideEffects = false } = {}) {
   const item = $("user-list").querySelector(`[data-login="${login}"]`);
@@ -423,15 +373,15 @@ async function unfollowUser(login, { skipSideEffects = false } = {}) {
     }
     return { succeeded: true, unfollowable: false };
   } catch (e) {
-    if (button) { button.disabled = false; button.textContent = "Deixar de seguir"; }
+    if (button) { button.disabled = false; button.textContent = t("actionUnfollow"); }
     if (e.httpStatus === 403 || e.httpStatus === 404) {
-      ui.showError(`Não foi possível deixar de seguir ${escHtml(login)}: perfil inacessível.`);
+      ui.showError(t("errorUnfollowInaccessible", { login }));
     } else if (e.httpStatus === 429) {
-      ui.showError(`Muitas requisições. Aguarde e tente novamente.`);
+      ui.showError(t("errorRateLimit"));
     } else if (e.httpStatus >= 500) {
-      ui.showError(`Erro temporário do GitHub. Tente novamente.`);
+      ui.showError(t("errorGitHubTemp"));
     } else {
-      ui.showError(`Erro ao deixar de seguir ${escHtml(login)}: ${e.message}`);
+      ui.showError(t("errorUnfollow", { login, message: e.message }));
     }
     return { succeeded: false, unfollowable: false };
   }
@@ -445,8 +395,6 @@ async function followUser(login, { skipSideEffects = false } = {}) {
   try {
     await api.ghFetch(`/user/following/${login}`, "PUT");
 
-    // Verifica se o follow realmente funcionou.
-    // Adiciona delay + retry para evitar falso positivo por propagação eventual do GitHub.
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await sleep(1500);
       try {
@@ -464,8 +412,6 @@ async function followUser(login, { skipSideEffects = false } = {}) {
           }
           return { succeeded: false, unfollowable: true };
         }
-        // Erros 403/429/etc. na verificação GET não invalidam o follow —
-        // o PUT já foi aceito pelo GitHub.
         break;
       }
     }
@@ -473,9 +419,8 @@ async function followUser(login, { skipSideEffects = false } = {}) {
     if (!skipSideEffects) ui.removeUserItem(login);
     return { succeeded: true, unfollowable: false };
   } catch (e) {
-    if (button) { button.disabled = false; button.textContent = "Seguir"; }
+    if (button) { button.disabled = false; button.textContent = t("actionFollow"); }
 
-    // 403, 404, 422 = restrição permanente (perfil privado, bloqueado, spam)
     if (e.httpStatus === 403 || e.httpStatus === 404 || e.httpStatus === 422) {
       await addUnfollowable([login]);
       if (!skipSideEffects) {
@@ -486,17 +431,12 @@ async function followUser(login, { skipSideEffects = false } = {}) {
       }
       return { succeeded: false, unfollowable: true };
     }
-    // Silencia erros durante ação em massa (apenas individual exibe toast)
     if (!state.isProcessing) {
-      ui.showError(`Erro ao seguir ${escHtml(login)}: ${e.message}`);
+      ui.showError(t("errorFollow", { login, message: e.message }));
     }
     return { succeeded: false, unfollowable: false };
   }
 }
-
-// ---------------------------------------------------------------------------
-// Ações em massa
-// ---------------------------------------------------------------------------
 
 function saveMassActionProgress({ actionType, totalCount, pendingLogins }) {
   return setStorageMulti({ [MASS_ACTION_KEY]: { actionType, totalCount, pendingLogins } });
@@ -521,7 +461,7 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
   otherButton.disabled = true;
   btnCancelMass.classList.remove("hidden");
   btnCancelMass.disabled = false;
-  btnCancelMass.textContent = "Cancelar";
+  btnCancelMass.textContent = t("btnCancel");
   button.textContent = `${processingLabel} (${done}/${totalCount})`;
 
   await saveMassActionProgress({ actionType, totalCount, pendingLogins: items.map((u) => u.login) }).catch(() => {});
@@ -548,7 +488,7 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
   await clearMassActionProgress().catch(() => {});
 
   if (wasCancelled) {
-    button.textContent = `Cancelado (${done}/${totalCount})`;
+    button.textContent = t("cancelledLabel", { done, total: totalCount });
     await sleep(1500);
   }
   button.disabled = false;
@@ -558,15 +498,14 @@ async function runMassAction({ actionType, items, actionFn, button, otherButton,
 }
 
 async function handleUnfollowAll() {
-  // Exclui whitelisted da ação em massa
   const toUnfollow = state.unfollowers.filter((u) => !state.whitelist.has(u.login));
   if (toUnfollow.length === 0) return;
 
   state.isProcessing = true;
   const confirmed = await showConfirmModal({
-    title: "Deixar de seguir?",
-    message: `Você está prestes a deixar de seguir <strong>${toUnfollow.length}</strong> usuário(s) que não te seguem de volta.`,
-    confirmText: "Sim, deixar de seguir",
+    title: t("modalTitleUnfollow"),
+    message: tHtml("modalTextUnfollow", { count: toUnfollow.length }),
+    confirmText: t("modalConfirmUnfollow"),
     iconColor: "var(--danger-hover)",
   });
   if (!confirmed) {
@@ -577,14 +516,13 @@ async function handleUnfollowAll() {
   await runMassAction({
     actionType: "unfollow", items: toUnfollow, actionFn: unfollowUser,
     button: btnUnfollowAll, otherButton: btnFollowAll,
-    processingLabel: "Processando", idleLabel: "Parar de seguir todos",
+    processingLabel: t("processingLabel"), idleLabel: t("btnUnfollowAll"),
   });
   ui.updateStats(state);
   ui.renderList(state, makeListActions());
   await persistState();
 }
 
-/** Processa resultado de mass-follow: identifica unfollowable e atualiza state. */
 async function processMassFollowResult({ attemptedLogins, succeededLogins, unfollowableLogins }) {
   if (unfollowableLogins.size) {
     await addUnfollowable([...unfollowableLogins]);
@@ -612,9 +550,9 @@ async function handleFollowAll() {
 
   state.isProcessing = true;
   const userConfirmed = await showConfirmModal({
-    title: "Seguir de volta?",
-    message: `Você está prestes a seguir <strong>${followable.length}</strong> usuário(s) que te seguem.`,
-    confirmText: "Sim, seguir",
+    title: t("modalTitleFollow"),
+    message: tHtml("modalTextFollow", { count: followable.length }),
+    confirmText: t("modalConfirmFollow"),
     iconColor: "var(--accent-emphasis)",
   });
   if (!userConfirmed) {
@@ -626,7 +564,7 @@ async function handleFollowAll() {
   const { succeededLogins, attemptedLogins, unfollowableLogins } = await runMassAction({
     actionType: "follow", items: followable, actionFn: followUser,
     button: btnFollowAll, otherButton: btnUnfollowAll,
-    processingLabel: "Processando", idleLabel: "Seguir todos",
+    processingLabel: t("processingLabel"), idleLabel: t("btnFollowAll"),
   });
 
   await processMassFollowResult({ attemptedLogins, succeededLogins, unfollowableLogins });
@@ -646,11 +584,11 @@ async function resumePendingMassAction() {
 
   state.isProcessing = true;
   const userConfirmed = await showConfirmModal({
-    title: isFollow ? "Seguir de volta?" : "Deixar de seguir?",
+    title: isFollow ? t("modalTitleFollow") : t("modalTitleUnfollow"),
     message: isFollow
-      ? `Você está prestes a seguir <strong>${items.length}</strong> usuário(s) que te seguem.`
-      : `Você está prestes a deixar de seguir <strong>${items.length}</strong> usuário(s) que não te seguem de volta.`,
-    confirmText: isFollow ? "Sim, seguir" : "Sim, deixar de seguir",
+      ? tHtml("modalTextResumeFollow", { count: items.length })
+      : tHtml("modalTextResumeUnfollow", { count: items.length }),
+    confirmText: isFollow ? t("modalConfirmFollow") : t("modalConfirmUnfollow"),
     iconColor: isFollow ? "var(--accent-emphasis)" : "var(--danger-hover)",
   });
   if (!userConfirmed) {
@@ -665,8 +603,8 @@ async function resumePendingMassAction() {
     actionFn: isFollow ? followUser : unfollowUser,
     button: isFollow ? btnFollowAll : btnUnfollowAll,
     otherButton: isFollow ? btnUnfollowAll : btnFollowAll,
-    processingLabel: "Retomando",
-    idleLabel: isFollow ? "Seguir todos" : "Parar de seguir todos",
+    processingLabel: t("resumingLabel"),
+    idleLabel: isFollow ? t("btnFollowAll") : t("btnUnfollowAll"),
   });
 
   if (isFollow) {
@@ -681,17 +619,13 @@ async function resumePendingMassAction() {
 function handleCancelMassAction() {
   state.cancelMassAction = true;
   btnCancelMass.disabled = true;
-  btnCancelMass.textContent = "Cancelando...";
+  btnCancelMass.textContent = t("cancellingLabel");
 }
 
-// ---------------------------------------------------------------------------
-// Event handlers de navegação
-// ---------------------------------------------------------------------------
-
 const TAB_LABELS = {
-  all: "Não te seguem de volta",
-  mutual: "Seguidores mútuos",
-  "not-following-back": "Quem segue você",
+  all: "listLabelUnfollowers",
+  mutual: "listLabelMutual",
+  "not-following-back": "listLabelNotFollowingBack",
 };
 
 function handleTabClick(event) {
@@ -700,7 +634,7 @@ function handleTabClick(event) {
   state.activeTab = tab.dataset.tab;
   state.query = "";
   searchInput.value = "";
-  $("list-label").textContent = TAB_LABELS[state.activeTab] ?? "";
+  $("list-label").textContent = t(TAB_LABELS[state.activeTab] ?? "");
   ui.renderList(state, makeListActions());
 }
 
@@ -743,10 +677,6 @@ async function handleLogout() {
   ui.showToken();
 }
 
-// ---------------------------------------------------------------------------
-// Export / Import
-// ---------------------------------------------------------------------------
-
 async function handleExport() {
   const [whitelistRaw, historyRaw] = await Promise.all([
     getStorage(WHITELIST_STORAGE_KEY),
@@ -781,14 +711,14 @@ async function handleImport() {
       const data = JSON.parse(text);
 
       if (!data || data.version !== 1 || !Array.isArray(data.whitelist) || !Array.isArray(data.history)) {
-        ui.showError("Formato de ficheiro inválido.");
+        ui.showError(t("importErrorFormat"));
         return;
       }
 
       const confirmed = await showConfirmModal({
-        title: "Importar dados?",
-        message: `Importar <strong>${data.whitelist.length}</strong> utilizador(es) na whitelist e <strong>${data.history.length}</strong> evento(s) de histórico.<br><br>Os dados atuais serão substituídos.`,
-        confirmText: "Sim, importar",
+        title: t("modalTitleImport"),
+        message: tHtml("modalTextImport", { whitelistCount: data.whitelist.length, historyCount: data.history.length }),
+        confirmText: t("modalConfirmImport"),
       });
       if (!confirmed) return;
 
@@ -807,19 +737,85 @@ async function handleImport() {
         if (!$("history-state").classList.contains("hidden")) renderHistoryTab();
       }
     } catch (e) {
-      ui.showError("Erro ao importar: " + e.message);
+      ui.showError(t("importErrorGeneric", { message: e.message }));
     }
   };
   input.click();
 }
 
-// ---------------------------------------------------------------------------
-// Atalhos de teclado
-// ---------------------------------------------------------------------------
+/** @type {Record<string, string>} */
+const LANG_LABELS = {
+  pt: "PT", en: "EN", zh: "中文", es: "ES", hi: "हिन्दी", ar: "العربية",
+  fr: "FR", de: "DE", ja: "日本語", ru: "RU", ko: "한국어",
+  it: "IT", tr: "TR", vi: "VI", pl: "PL", nl: "NL",
+};
+
+// ── Language Picker ──
+
+const LANG_ENGLISH_NAMES = {
+  pt: "Portuguese", en: "English", zh: "Chinese", es: "Spanish",
+  hi: "Hindi", ar: "Arabic", fr: "French", de: "German",
+  ja: "Japanese", ru: "Russian", ko: "Korean", it: "Italian",
+  tr: "Turkish", vi: "Vietnamese", pl: "Polish", nl: "Dutch",
+};
+
+function openLanguagePicker() {
+  $("lang-picker").classList.remove("hidden");
+  $("lang-picker-list").innerHTML = "";
+  renderLanguageList("");
+  $("lang-picker-search").value = "";
+  $("lang-picker-search").focus();
+}
+
+function closeLanguagePicker() {
+  $("lang-picker").classList.add("hidden");
+  $("menu-language-label").textContent = t("menuLanguage", { lang: LANG_LABELS[getLocale()] });
+}
+
+function renderLanguageList(query) {
+  const container = $("lang-picker-list");
+  const current = getLocale();
+  const q = query.toLowerCase().trim();
+  const filtered = SUPPORTED_LOCALES.filter((code) => {
+    if (!q) return true;
+    const native = LANG_LABELS[code].toLowerCase();
+    const english = LANG_ENGLISH_NAMES[code].toLowerCase();
+    return native.includes(q) || english.includes(q) || code.includes(q);
+  });
+  container.innerHTML = filtered
+    .map(
+      (code) => `
+        <button class="lang-picker-item" data-lang="${code}">
+          <span class="lang-picker-item-code">${code}</span>
+          <span class="lang-picker-item-native">${LANG_LABELS[code]}</span>
+          <span class="lang-picker-item-check${code === current ? " active" : ""}">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
+            </svg>
+          </span>
+        </button>`,
+    )
+    .join("");
+  container.querySelectorAll(".lang-picker-item").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const code = btn.dataset.lang;
+      await setLocale(code);
+      applyI18nToDOM();
+      if (state.user) {
+        setUserHeader(state.user);
+        ui.updateStats(state);
+        ui.renderList(state, makeListActions());
+        if (!$("whitelist-state").classList.contains("hidden")) renderWhitelistTab();
+        if (!$("history-state").classList.contains("hidden")) renderHistoryTab();
+        if (ui.isPanelOpen()) ui.closeProfilePanel();
+      }
+      closeLanguagePicker();
+    });
+  });
+}
 
 function bindKeyboardShortcuts() {
   document.addEventListener("keydown", (e) => {
-    // Ignora quando foco está em input/select
     const tag = document.activeElement?.tagName;
     if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
       if (e.key === "Escape") document.activeElement.blur();
@@ -828,11 +824,11 @@ function bindKeyboardShortcuts() {
 
     if (e.key === "Escape") {
       closeMenu();
-      if (ui.isPanelOpen()) { ui.closeProfilePanel(); return; }
       if (!modalOverlay.classList.contains("hidden")) { modalCancel.click(); return; }
+      if (!$("lang-picker").classList.contains("hidden")) { closeLanguagePicker(); return; }
+      if (ui.isPanelOpen()) { ui.closeProfilePanel(); return; }
     }
 
-    // Só ativa atalhos de tab quando a tela principal está visível
     if ($("screen-main").classList.contains("hidden")) return;
 
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -864,21 +860,18 @@ function bindKeyboardShortcuts() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Conexão
-// ---------------------------------------------------------------------------
-
-const CONNECT_BTN_HTML = `
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+function getConnectBtnHtml() {
+  return `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
     <path d="M1 5.25A2.25 2.25 0 0 1 3.25 3h9.5A2.25 2.25 0 0 1 15 5.25v5.5A2.25 2.25 0 0 1 12.75 13h-9.5A2.25 2.25 0 0 1 1 10.75ZM3.25 4.5a.75.75 0 0 0-.75.75v.128l5.5 3.589 5.5-3.59V5.25a.75.75 0 0 0-.75-.75Zm9.25 2.867-4.215 2.748a1.75 1.75 0 0 1-1.87-.001L2.5 7.367v3.383c0 .414.336.75.75.75h9.5a.75.75 0 0 0 .75-.75Z"/>
-  </svg> Conectar`;
+  </svg> ${t("btnConnect")}`;
+}
 
 async function handleConnect() {
   const token = tokenInput.value.trim();
-  if (!token) return ui.showConnectError("Cole seu Personal Access Token acima.");
+  if (!token) return ui.showConnectError(t("connectErrorNoToken"));
 
   btnConnect.disabled = true;
-  btnConnect.textContent = "Verificando...";
+  btnConnect.textContent = t("connectChecking");
   $("connect-error").classList.add("hidden");
 
   try {
@@ -891,20 +884,16 @@ async function handleConnect() {
   } catch (e) {
     state.token = null;
     if (e.isAuthError) {
-      ui.showConnectError("Token inválido ou expirado. Gere um novo token.");
+      ui.showConnectError(t("connectErrorExpired"));
       ui.showToken();
     } else {
       ui.showConnectError(e.message);
     }
   } finally {
     btnConnect.disabled = false;
-    btnConnect.innerHTML = CONNECT_BTN_HTML;
+    btnConnect.innerHTML = getConnectBtnHtml();
   }
 }
-
-// ---------------------------------------------------------------------------
-// Menu dropdown
-// ---------------------------------------------------------------------------
 
 function toggleMenu() {
   const dropdown = $("menu-dropdown");
@@ -920,10 +909,6 @@ function closeMenu() {
   $("menu-dropdown").classList.remove("open");
   $("menu-overlay").classList.add("hidden");
 }
-
-// ---------------------------------------------------------------------------
-// Dev Panel
-// ---------------------------------------------------------------------------
 
 let devPanelActiveId = null;
 
@@ -978,10 +963,6 @@ function initDevPanel() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Registro de eventos
-// ---------------------------------------------------------------------------
-
 let listenersBound = false;
 
 function bindEventListeners() {
@@ -1015,6 +996,18 @@ function bindEventListeners() {
     applyTheme(currentTheme);
     saveTheme(currentTheme).catch(console.error);
   });
+
+  $("menu-language").addEventListener("click", () => {
+    closeMenu();
+    openLanguagePicker();
+  });
+
+  // Language picker
+  $("lang-picker-close").addEventListener("click", closeLanguagePicker);
+  $("lang-picker-search").addEventListener("input", (e) => {
+    renderLanguageList(e.target.value);
+  });
+
   $("menu-refresh").addEventListener("click", () => { closeMenu(); handleRefresh(); });
   $("menu-export").addEventListener("click", () => { closeMenu(); handleExport(); });
   $("menu-import").addEventListener("click", () => { closeMenu(); handleImport(); });
@@ -1034,21 +1027,17 @@ function bindEventListeners() {
     initDevPanel();
   }
 
-  // Navegação entre sub-telas
   $("nav-tab-results").addEventListener("click", () => showMainTab("results"));
   $("nav-tab-history").addEventListener("click", () => showMainTab("history"));
   $("nav-tab-whitelist").addEventListener("click", () => showMainTab("whitelist"));
 
-  // Limpar histórico
   $("btn-clear-history").addEventListener("click", () => {
     clearHistory().then(() => renderHistoryTab()).catch(console.error);
   });
 
-  // Painel de perfil — fechar
   $("profile-close").addEventListener("click", () => ui.closeProfilePanel());
   $("profile-overlay").addEventListener("click", () => ui.closeProfilePanel());
 
-  // Toggle unfollowable banner
   $("btn-unfollowable-toggle").addEventListener("click", () => {
     state.showUnfollowable = !state.showUnfollowable;
     ui.updateStats(state);
@@ -1058,17 +1047,18 @@ function bindEventListeners() {
   bindKeyboardShortcuts();
 }
 
-// ---------------------------------------------------------------------------
-// Inicialização
-// ---------------------------------------------------------------------------
-
 async function init() {
+  await initI18n();
+  applyI18nToDOM();
+
   chrome.action.setBadgeText({ text: "" });
   currentTheme = await initTheme();
   bindEventListeners();
   await api.initCache();
 
-  // Carrega whitelist e unfollowable antes de qualquer render
+  // Atualiza o rótulo do menu de idioma
+  $("menu-language-label").textContent = t("menuLanguage", { lang: LANG_LABELS[getLocale()] });
+
   state.whitelist = await loadWhitelist();
   await loadUnfollowable();
 
@@ -1103,7 +1093,7 @@ async function init() {
   } catch (e) {
     state.token = null;
     if (e.isAuthError) {
-      ui.showConnectError("Token salvo expirou ou foi revogado. Gere um novo.");
+      ui.showConnectError(t("connectErrorTokenExpired"));
       ui.showToken();
     } else {
       ui.showMain();
@@ -1111,5 +1101,9 @@ async function init() {
     }
   }
 }
+
+// Ícones inline — duplicados localmente para evitar dependência circular
+const ICON_BOOKMARK = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.91l3.023-2.489a.75.75 0 0 1 .954 0L11.5 12.41V2.75a.25.25 0 0 0-.25-.25Z"/></svg>`;
+const ICON_BOOKMARK_FILL = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.751.751 0 0 1 3 14.25Z"/></svg>`;
 
 init();

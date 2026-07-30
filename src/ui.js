@@ -1,12 +1,8 @@
 import { $ } from "./dom.js";
 import { escHtml } from "./utils.js";
 import { VIRTUAL_SCROLL_THRESHOLD, ITEM_HEIGHT_PX, OVERSCAN_ITEMS, VIRTUAL_SCROLL_MAX_POOL } from "./constants.js";
+import { t, tHtml, getIntlLocale } from "./i18n.js";
 
-// ---------------------------------------------------------------------------
-// Virtual Scroll
-// ---------------------------------------------------------------------------
-
-/** @type {VirtualScroll | null} */
 let currentVirtual = null;
 
 class VirtualScroll {
@@ -117,47 +113,45 @@ class VirtualScroll {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Render helpers
-// ---------------------------------------------------------------------------
-
 function avatarSrc(url) {
   const sep = url.includes("?") ? "&" : "?";
   return `${escHtml(url)}${sep}s=64`;
 }
 
 function buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitelisted, isUnfollowable }) {
+  const viewProfileLabel = t("actionViewProfile");
   const actionHtml = isUnfollowable
     ? `<div class="user-actions">
-        <span class="badge-unfollowable">Inacessível</span>
-        <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
+        <span class="badge-unfollowable">${escHtml(t("badgeInaccessible"))}</span>
+        <button class="btn-icon btn-profile" title="${escHtml(viewProfileLabel)}" aria-label="${escHtml(viewProfileLabel + ' ' + user.login)}">
           ${ICON_CHEVRON}
         </button>
        </div>`
     : isMutual
     ? `<div class="user-actions">
-        <span class="badge-mutual">Mútuo</span>
-        <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
+        <span class="badge-mutual">${escHtml(t("badgeMutual"))}</span>
+        <button class="btn-icon btn-profile" title="${escHtml(viewProfileLabel)}" aria-label="${escHtml(viewProfileLabel + ' ' + user.login)}">
           ${ICON_CHEVRON}
         </button>
        </div>`
     : isNotFollowingBack
       ? `<div class="user-actions">
-          <button class="btn btn-primary-sm" data-action="follow">Seguir</button>
-          <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
+          <button class="btn btn-primary-sm" data-action="follow">${escHtml(t("actionFollow"))}</button>
+          <button class="btn-icon btn-profile" title="${escHtml(viewProfileLabel)}" aria-label="${escHtml(viewProfileLabel + ' ' + user.login)}">
             ${ICON_CHEVRON}
           </button>
          </div>`
       : `<div class="user-actions">
-          <button class="btn-icon btn-whitelist${isWhitelisted ? " is-whitelisted" : ""}" title="${isWhitelisted ? "Remover da whitelist" : "Ignorar sempre"}" aria-label="${isWhitelisted ? "Remover da whitelist" : "Ignorar sempre"}">
+          <button class="btn-icon btn-whitelist${isWhitelisted ? " is-whitelisted" : ""}" title="${escHtml(isWhitelisted ? t("actionWhitelistRemove") : t("actionWhitelistAdd"))}" aria-label="${escHtml(isWhitelisted ? t("actionWhitelistRemove") : t("actionWhitelistAdd"))}">
             ${isWhitelisted ? ICON_BOOKMARK_FILL : ICON_BOOKMARK}
           </button>
-          <button class="btn btn-danger-sm" data-action="unfollow">Parar</button>
-          <button class="btn-icon btn-profile" title="Ver perfil" aria-label="Ver perfil de ${escHtml(user.login)}">
+          <button class="btn btn-danger-sm" data-action="unfollow">${escHtml(t("actionUnfollow"))}</button>
+          <button class="btn-icon btn-profile" title="${escHtml(viewProfileLabel)}" aria-label="${escHtml(viewProfileLabel + ' ' + user.login)}">
             ${ICON_CHEVRON}
           </button>
          </div>`;
 
+  const locale = getIntlLocale();
   return `
     <img class="avatar" src="${avatarSrc(user.avatar_url)}" alt="@${escHtml(user.login)}" loading="lazy" />
     <div class="user-info">
@@ -165,10 +159,10 @@ function buildUserItemHtml(user, { isMutual, isNotFollowingBack, isNew, isWhitel
       <div class="user-meta">
         ${user.name ? `<span class="user-name">${escHtml(user.name)}</span>` : ""}
         ${user.followers != null
-          ? `<span class="user-sep">·</span><span class="user-followers">${Number(user.followers).toLocaleString("pt-BR")} seg.</span>`
+          ? `<span class="user-sep">·</span><span class="user-followers">${Number(user.followers).toLocaleString(locale)} seg.</span>`
           : ""}
-        ${isNew ? `<span class="badge-new">Novo</span>` : ""}
-        ${isWhitelisted ? `<span class="badge-whitelist">Ignorado</span>` : ""}
+        ${isNew ? `<span class="badge-new">${escHtml(t("badgeNew"))}</span>` : ""}
+        ${isWhitelisted ? `<span class="badge-whitelist">${escHtml(t("badgeWhitelist"))}</span>` : ""}
       </div>
     </div>
     ${actionHtml}
@@ -201,7 +195,6 @@ function bindUserItemEvents(node, user, { followUser, unfollowUser, onOpenProfil
     });
   }
 
-  // Clique no avatar também abre o painel
   const avatar = node.querySelector(".avatar");
   if (avatar) {
     avatar.addEventListener("click", (e) => {
@@ -242,16 +235,13 @@ function renderFullList(userList, list, actions, newSet) {
   userList.appendChild(fragment);
 }
 
-// ---------------------------------------------------------------------------
-// Painel de perfil lateral
-// ---------------------------------------------------------------------------
-
 let profilePanelOpen = false;
 
 export function openProfilePanel(user, { onWhitelistToggle, whitelist } = {}) {
   const panel = $("profile-panel");
   const overlay = $("profile-overlay");
   const isWhitelisted = whitelist?.has(user.login);
+  const locale = getIntlLocale();
 
   $("profile-avatar").src = `${user.avatar_url}?s=128`;
   $("profile-avatar").alt = `@${user.login}`;
@@ -265,20 +255,18 @@ export function openProfilePanel(user, { onWhitelistToggle, whitelist } = {}) {
   $("profile-location").parentElement?.classList.toggle("hidden", !user.location);
   $("profile-company").textContent = user.company || "";
   $("profile-company").parentElement?.classList.toggle("hidden", !user.company);
-  $("profile-followers-count").textContent = (user.followers || 0).toLocaleString("pt-BR");
-  $("profile-following-count").textContent = (user.following || 0).toLocaleString("pt-BR");
-  $("profile-repos-count").textContent = (user.public_repos || 0).toLocaleString("pt-BR");
+  $("profile-followers-count").textContent = (user.followers || 0).toLocaleString(locale);
+  $("profile-following-count").textContent = (user.following || 0).toLocaleString(locale);
+  $("profile-repos-count").textContent = (user.public_repos || 0).toLocaleString(locale);
 
-  // Estado de loading para repos
-  $("profile-repos-list").innerHTML = `<div class="profile-loading">Carregando...</div>`;
+  $("profile-repos-list").innerHTML = `<div class="profile-loading">${escHtml(t("profileLoading"))}</div>`;
 
-  // Botão de whitelist
   const wlBtn = $("profile-whitelist-btn");
   wlBtn.classList.toggle("is-whitelisted", !!isWhitelisted);
-  wlBtn.title = isWhitelisted ? "Remover da whitelist" : "Ignorar sempre (whitelist)";
+  wlBtn.title = isWhitelisted ? t("profileWhitelistRemove") : t("profileWhitelistAdd");
   wlBtn.innerHTML = isWhitelisted
-    ? `${ICON_BOOKMARK_FILL} <span>Remover da whitelist</span>`
-    : `${ICON_BOOKMARK} <span>Ignorar sempre</span>`;
+    ? `${ICON_BOOKMARK_FILL} <span>${escHtml(t("profileWhitelistRemove"))}</span>`
+    : `${ICON_BOOKMARK} <span>${escHtml(t("profileWhitelistAdd"))}</span>`;
   if (onWhitelistToggle) {
     wlBtn.onclick = () => onWhitelistToggle(user.login);
   }
@@ -304,8 +292,9 @@ export function isPanelOpen() {
 
 export function renderProfileRepos(repos) {
   const container = $("profile-repos-list");
+  const locale = getIntlLocale();
   if (!repos || repos.length === 0) {
-    container.innerHTML = `<p class="profile-empty">Nenhum repositório público.</p>`;
+    container.innerHTML = `<p class="profile-empty">${escHtml(t("profileNoRepos"))}</p>`;
     return;
   }
   container.innerHTML = repos
@@ -317,37 +306,41 @@ export function renderProfileRepos(repos) {
         ${r.description ? `<span class="profile-repo-desc">${escHtml(r.description)}</span>` : ""}
         <div class="profile-repo-meta">
           ${r.language ? `<span class="profile-repo-lang">${escHtml(r.language)}</span>` : ""}
-          ${r.stargazers_count > 0 ? `<span class="profile-repo-stars">${ICON_STAR} ${r.stargazers_count.toLocaleString("pt-BR")}</span>` : ""}
+          ${r.stargazers_count > 0 ? `<span class="profile-repo-stars">${ICON_STAR} ${r.stargazers_count.toLocaleString(locale)}</span>` : ""}
         </div>
       </a>`,
     )
     .join("");
 }
 
-// ---------------------------------------------------------------------------
-// Aba de Histórico
-// ---------------------------------------------------------------------------
-
 export function renderHistory(events) {
   const container = $("history-list");
+  const locale = getIntlLocale();
   if (!events || events.length === 0) {
     container.innerHTML = `
       <div class="state-center">
         ${ICON_HISTORY_EMPTY}
-        <p>Nenhum evento registrado ainda.</p>
+        <p>${escHtml(t("historyEmpty"))}</p>
       </div>`;
     return;
   }
 
-  const fmt = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+  const fmt = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   function relativeTime(ts) {
     const diff = ts - Date.now();
     const abs = Math.abs(diff);
-    if (abs < 60_000) return "agora mesmo";
+    if (abs < 60_000) return t("historyTimeNow");
     if (abs < 3_600_000) return fmt.format(Math.round(diff / 60_000), "minute");
     if (abs < 86_400_000) return fmt.format(Math.round(diff / 3_600_000), "hour");
     return fmt.format(Math.round(diff / 86_400_000), "day");
   }
+
+  const typeLabels = {
+    unfollowed: t("badgeUnfollowed"),
+    unfollowable: t("badgeInaccessible"),
+    not_following_back: t("badgeNotFollowingBack"),
+    followed: t("badgeFollowed"),
+  };
 
   container.innerHTML = events
     .map(
@@ -360,20 +353,16 @@ export function renderHistory(events) {
           </a>
           <div class="user-meta">
             <span class="history-badge history-badge--${e.type}">
-              ${e.type === "unfollowed" ? "Deixou de seguir" : e.type === "unfollowable" ? "Inacessível" : e.type === "not_following_back" ? "Não segue você" : "Seguiu você"}
+              ${escHtml(typeLabels[e.type] || "")}
             </span>
             <span class="user-sep">·</span>
-            <span class="user-followers">${relativeTime(e.ts)}</span>
+            <span class="user-followers">${escHtml(relativeTime(e.ts))}</span>
           </div>
         </div>
       </div>`,
     )
     .join("");
 }
-
-// ---------------------------------------------------------------------------
-// Whitelist management screen
-// ---------------------------------------------------------------------------
 
 export function renderWhitelistManager(whitelist, allUsers) {
   const container = $("whitelist-list");
@@ -386,7 +375,7 @@ export function renderWhitelistManager(whitelist, allUsers) {
     container.innerHTML = `
       <div class="state-center">
         ${ICON_BOOKMARK_EMPTY}
-        <p>Nenhum usuário na whitelist.</p>
+        <p>${escHtml(t("whitelistEmpty"))}</p>
       </div>`;
     return;
   }
@@ -401,35 +390,22 @@ export function renderWhitelistManager(whitelist, allUsers) {
             ${escHtml(e.login)}
           </a>
           <div class="user-meta">
-            <span class="badge-whitelist">Ignorado</span>
+            <span class="badge-whitelist">${escHtml(t("badgeWhitelist"))}</span>
           </div>
         </div>
-        <button class="btn btn-danger-sm" data-remove="${escHtml(e.login)}">Remover</button>
+        <button class="btn btn-danger-sm" data-remove="${escHtml(e.login)}">${escHtml(t("actionRemove"))}</button>
       </div>`,
     )
     .join("");
 }
 
-// ---------------------------------------------------------------------------
-// Estado vazio
-// ---------------------------------------------------------------------------
-
-const EMPTY_MESSAGES = {
-  mutual: "<strong>Nenhum seguidor mútuo.</strong>",
-  "not-following-back": "<strong>Todos que te seguem, você já segue de volta.</strong>",
-  all: "<strong>Tudo certo!</strong> Todos que você segue te seguem de volta.",
-};
-
 function showEmptyForTab(activeTab) {
-  const msg = EMPTY_MESSAGES[activeTab];
-  if (!msg) return;
-  $("all-following-back-msg").innerHTML = msg;
+  const key = activeTab === "mutual" ? "allFollowingBackMutual"
+    : activeTab === "not-following-back" ? "allFollowingBackNotFollowingBack"
+    : "allFollowingBackAll";
+  $("all-following-back-msg").innerHTML = tHtml(key);
   $("all-following-back").classList.remove("hidden");
 }
-
-// ---------------------------------------------------------------------------
-// API pública — stats e render principal
-// ---------------------------------------------------------------------------
 
 export function updateStats(state) {
   $("count-all").textContent = state.whitelist?.size
@@ -450,12 +426,10 @@ export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals
       ? notFollowingBack
       : unfollowers;
 
-  // Oculta whitelisted na aba de não-seguidores
   if (activeTab === "all" && whitelist?.size) {
     source = source.filter((u) => !whitelist.has(u.login));
   }
 
-  // Oculta unfollowable na aba "Não sigo" (perfis privados / restrições)
   if (activeTab === "not-following-back" && !showUnfollowable && unfollowable?.size) {
     source = source.filter((u) => !unfollowable.has(u.login));
   }
@@ -480,7 +454,6 @@ export function renderList(state, actions = {}) {
   const isMutual = state.activeTab === "mutual";
   const isNotFollowingBack = state.activeTab === "not-following-back";
 
-  // Conta apenas unfollowable que ainda estão em notFollowingBack
   const activeUnfollowableCount = (isNotFollowingBack && state.unfollowable?.size)
     ? state.notFollowingBack.filter((u) => state.unfollowable.has(u.login)).length
     : 0;
@@ -501,21 +474,18 @@ export function renderList(state, actions = {}) {
   $("all-following-back").classList.add("hidden");
   $("empty-filtered").classList.add("hidden");
 
-  // Fonte bruta (antes de filtrar unfollowable)
   const rawSourceEmpty =
     (isMutual && state.mutuals.length === 0) ||
     (isNotFollowingBack && state.notFollowingBack.length === 0) ||
     (!isMutual && !isNotFollowingBack && unfollowTargets.length === 0);
 
-  // Fonte visível (depois de filtrar unfollowable)
   const list = getFilteredList(state);
 
-  // Banner de unfollowable
   if (hasUnfollowable) {
     const banner = $("unfollowable-banner");
     const bannerText = $("unfollowable-text");
-    bannerText.textContent = `${activeUnfollowableCount} contas não podem ser seguidas automaticamente.`;
-    $("btn-unfollowable-toggle").textContent = state.showUnfollowable ? "Ocultar" : "Mostrar";
+    bannerText.textContent = t("unfollowableBanner", { count: activeUnfollowableCount });
+    $("btn-unfollowable-toggle").textContent = state.showUnfollowable ? t("btnHide") : t("btnShow");
     banner.classList.remove("hidden");
   } else {
     $("unfollowable-banner")?.classList.add("hidden");
@@ -527,7 +497,6 @@ export function renderList(state, actions = {}) {
     userList.innerHTML = "";
     userList.style.position = "";
 
-    // Source vazio mas há unfollowable ocultos → mostra lista vazia + banner
     if (hasUnfollowable && !state.showUnfollowable) return;
     showEmptyForTab(state.activeTab);
     return;
@@ -565,10 +534,6 @@ export function renderList(state, actions = {}) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Estados de tela
-// ---------------------------------------------------------------------------
-
 export function showToken() {
   $("screen-token").classList.remove("hidden");
   $("screen-main").classList.add("hidden");
@@ -590,7 +555,7 @@ export function showError(msg, { title, onRetry } = {}) {
   $("loading-state").classList.add("hidden");
   $("error-state").classList.remove("hidden");
   $("main-error").innerHTML = msg;
-  $("error-state-title").textContent = title || "Algo deu errado";
+  $("error-state-title").textContent = title || t("errorTitle");
 
   const retryBtn = $("btn-error-retry");
   retryBtn.classList.toggle("hidden", !onRetry);
@@ -618,10 +583,6 @@ export function showConnectError(msg) {
 export function removeUserItem(login) {
   document.querySelector(`[data-login="${login}"]`)?.remove();
 }
-
-// ---------------------------------------------------------------------------
-// Ícones SVG inline
-// ---------------------------------------------------------------------------
 
 const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>`;
 
