@@ -41,6 +41,7 @@
 - Retomada automática de ações interrompidas
 - Whitelist de usuários ignorados
 - Histórico de eventos (follow, unfollow, inacessível)
+- Export/import de dados como JSON
 
 </td>
 </tr>
@@ -148,6 +149,7 @@
 github-unfollowers/
 ├── popup.html              Interface HTML
 ├── popup.css               Estilos e tema dark/light
+├── import.html             Página dedicada de importação (aba separada)
 ├── manifest.json           Configuração da extensão (MV3)
 ├── src/
 │   ├── main.js             Bootstrap (importa app.js)
@@ -162,6 +164,7 @@ github-unfollowers/
 │   ├── dom.js              Helpers $() e $$()
 │   ├── history.js          Histórico de eventos (30 dias)
 │   ├── i18n.js             Internacionalização (16 idiomas)
+│   ├── import.js           Lógica da página de importação
 │   ├── theme.js            Gerenciamento de tema dark/light
 │   ├── whitelist.js        Gerenciamento da whitelist
 │   ├── utils.js            Funções utilitárias

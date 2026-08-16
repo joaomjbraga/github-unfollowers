@@ -21,7 +21,6 @@ const btnUnfollowAll = $("btn-unfollow-all");
 const btnFollowAll = $("btn-follow-all");
 const btnCancelMass = $("btn-cancel-mass");
 const modalOverlay = $("modal-overlay");
-const modalCount = $("modal-count");
 const modalConfirm = $("modal-confirm");
 const modalCancel = $("modal-cancel");
 const modalTitle = $("modal-title");
@@ -134,7 +133,6 @@ function showConfirmModal({ title, message, confirmText, confirmClass = "btn-pri
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalText.innerHTML = message;
-    modalCount.textContent = "";
     modalConfirm.textContent = confirmText;
     modalConfirm.className = `btn ${confirmClass} modal-confirm`;
     if (modalIcon) modalIcon.style.color = iconColor || "";
@@ -697,50 +695,7 @@ async function handleExport() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-async function handleImport() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json";
-  input.onchange = async () => {
-    const file = input.files[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      if (!data || data.version !== 1 || !Array.isArray(data.whitelist) || !Array.isArray(data.history)) {
-        ui.showError(t("importErrorFormat"));
-        return;
-      }
-
-      const confirmed = await showConfirmModal({
-        title: t("modalTitleImport"),
-        message: tHtml("modalTextImport", { whitelistCount: data.whitelist.length, historyCount: data.history.length }),
-        confirmText: t("modalConfirmImport"),
-      });
-      if (!confirmed) return;
-
-      await Promise.all([
-        setStorage(WHITELIST_STORAGE_KEY, data.whitelist),
-        setStorage(HISTORY_STORAGE_KEY, data.history),
-      ]);
-
-      state.whitelist = new Set(data.whitelist);
-
-      if (state.user) {
-        ui.updateStats(state);
-        ui.renderList(state, makeListActions());
-
-        if (!$("whitelist-state").classList.contains("hidden")) renderWhitelistTab();
-        if (!$("history-state").classList.contains("hidden")) renderHistoryTab();
-      }
-    } catch (e) {
-      ui.showError(t("importErrorGeneric", { message: e.message }));
-    }
-  };
-  input.click();
+  ui.showToast(t("exportSuccess"));
 }
 
 /** @type {Record<string, string>} */
@@ -1010,7 +965,12 @@ function bindEventListeners() {
 
   $("menu-refresh").addEventListener("click", () => { closeMenu(); handleRefresh(); });
   $("menu-export").addEventListener("click", () => { closeMenu(); handleExport(); });
-  $("menu-import").addEventListener("click", () => { closeMenu(); handleImport(); });
+  $("menu-import").addEventListener("click", () => {
+    closeMenu();
+    if (chrome?.tabs?.create && chrome.runtime?.getURL) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("import.html") });
+    }
+  });
   $("menu-report")?.addEventListener("click", () => closeMenu());
   $("menu-logout").addEventListener("click", () => { closeMenu(); handleLogout(); });
 

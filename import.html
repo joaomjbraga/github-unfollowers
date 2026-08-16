@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Importar arquivo de backup</title>
+    <link rel="stylesheet" href="popup.css" />
+    <style>
+      body {
+        width: 100%;
+        min-width: unset;
+        max-width: unset;
+        height: auto;
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-canvas);
+      }
+      .import-page {
+        width: 100%;
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        box-sizing: border-box;
+      }
+      .page-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        text-align: center;
+      }
+      .page-logo {
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      }
+      .page-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+      }
+      .page-subtitle {
+        margin: 0;
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        max-width: 420px;
+        line-height: 1.5;
+      }
+
+      .stepper {
+        display: flex;
+        justify-content: center;
+        gap: 44px;
+        list-style: none;
+        margin: 4px 0 0;
+        padding: 0;
+      }
+      .step {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+      }
+      .step::after {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: calc(50% + 22px);
+        width: 44px;
+        height: 1.5px;
+        background: var(--separator-opaque);
+      }
+      .step:last-child::after {
+        display: none;
+      }
+      .step-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        background: var(--bg-elevated);
+        color: var(--text-tertiary);
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+      }
+      .step-label {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        transition: color 0.2s;
+      }
+      .step.active .step-dot {
+        background: var(--tag-bg);
+        color: var(--tag-text);
+        box-shadow: 0 0 0 1px var(--blue);
+      }
+      .step.active .step-label {
+        color: var(--text-primary);
+      }
+      .step.done .step-dot {
+        background: var(--accent);
+        color: #04240f;
+      }
+      .step.done::after {
+        background: var(--accent);
+      }
+      .step.done .step-label {
+        color: var(--text-secondary);
+      }
+
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--separator);
+        border-radius: 20px;
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        text-align: center;
+      }
+      .drop-card {
+        border: 1.5px dashed var(--separator-opaque);
+        transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      }
+      .drop-card.dragover {
+        border-color: var(--blue);
+        background: var(--tag-bg);
+        transform: scale(1.015);
+      }
+      .drop-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--bg-elevated);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, color 0.2s;
+      }
+      .drop-card.dragover .drop-icon {
+        background: var(--bg-elevated-2);
+        color: var(--blue);
+      }
+      .drop-hint {
+        margin: 0;
+        font-size: 12.5px;
+        color: var(--text-tertiary);
+      }
+      .import-page .btn-primary {
+        margin-top: 0;
+        width: 100%;
+      }
+
+      .file-card {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: left;
+        padding: 16px 18px;
+        gap: 12px;
+      }
+      .file-icon {
+        color: var(--blue);
+        flex-shrink: 0;
+      }
+      .file-meta {
+        min-width: 0;
+      }
+      .file-label {
+        display: block;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .file-name {
+        display: block;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--text-primary);
+        word-break: break-all;
+        margin-top: 2px;
+      }
+
+      .confirm-card {
+        align-items: stretch;
+        text-align: left;
+      }
+      .confirm-message {
+        margin: 0 0 20px;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--text-primary);
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+      .actions .btn {
+        flex: 1;
+        margin-top: 0;
+      }
+
+      .done-card {
+        gap: 10px;
+        padding: 36px 24px;
+      }
+      .check-badge {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(48, 209, 88, 0.15);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: popIn 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .done-title {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 800;
+        letter-spacing: -0.2px;
+      }
+      .done-hint {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        max-width: 400px;
+      }
+      .import-page .done-card .btn-primary {
+        max-width: 220px;
+        margin-top: 8px;
+      }
+      .import-error {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .hidden {
+        display: none !important;
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.4);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @media (max-width: 420px) {
+        .import-page {
+          padding: 28px 16px 40px;
+        }
+        .stepper {
+          gap: 32px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="import-page">
+      <header class="page-header">
+        <img class="page-logo" src="icons/icon128.png" alt="" width="56" height="56" />
+        <h1 class="page-title" data-i18n="importFileTitle">Importar arquivo de backup</h1>
+        <p class="page-subtitle" data-i18n="importFileHint">Restaura sua whitelist e seu histórico de ações exportados pelo GitHub Unfollowers.</p>
+      </header>
+
+      <ol class="stepper" aria-hidden="true">
+        <li class="step active" id="step-file">
+          <span class="step-dot">1</span>
+          <span class="step-label" data-i18n="importStepFile">Arquivo</span>
+        </li>
+        <li class="step" id="step-confirm">
+          <span class="step-dot">2</span>
+          <span class="step-label" data-i18n="importStepConfirm">Confirmar</span>
+        </li>
+        <li class="step" id="step-done">
+          <span class="step-dot">3</span>
+          <span class="step-label" data-i18n="importStepDone">Concluído</span>
+        </li>
+      </ol>
+
+      <div id="dropzone" class="card drop-card" role="button" tabindex="0">
+        <input type="file" id="file-input" accept=".json,application/json" />
+        <div class="drop-icon" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M4.75 6.25a.75.75 0 0 1 .75-.75h1.5v-1.5h-1.5a.75.75 0 0 1 0-1.5h2.25A1.75 1.75 0 0 1 9.5 4.25v3.97l1.22-1.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734l-2.5 2.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l1.22 1.22V4.25a.25.25 0 0 0-.25-.25h-2.25a.75.75 0 0 1-.75-.75ZM3 10.75a.75.75 0 0 1 .75.75 2.5 2.5 0 0 0 2.5 2.5h3.5a2.5 2.5 0 0 0 2.5-2.5.75.75 0 0 1 1.5 0 4 4 0 0 1-4 4h-3.5a4 4 0 0 1-4-4 .75.75 0 0 1 .75-.75Z"/>
+          </svg>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-pick" data-i18n="importFilePick">Escolher arquivo</button>
+        <p class="drop-hint" data-i18n="importFileDragHint">ou arraste e solte o arquivo .json aqui</p>
+      </div>
+
+      <div id="file-box" class="card file-card hidden">
+        <div class="file-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Z"/>
+          </svg>
+        </div>
+        <div class="file-meta">
+          <span class="file-label" data-i18n="importFileSelected">Arquivo selecionado</span>
+          <strong class="file-name" id="file-name"></strong>
+        </div>
+      </div>
+
+      <div id="error-box" class="import-error hidden" role="alert" aria-live="polite"></div>
+
+      <div id="confirm-box" class="card confirm-card hidden">
+        <div class="confirm-message" id="confirm-message"></div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="btn-cancel" data-i18n="btnCancel">Cancelar</button>
+          <button class="btn btn-primary" id="btn-import" data-i18n="importDo">Importar</button>
+        </div>
+      </div>
+
+      <div id="done-box" class="card done-card hidden">
+        <div class="check-badge" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
+          </svg>
+        </div>
+        <p class="done-title" data-i18n="importFileDone">Importação concluída!</p>
+        <p class="done-hint" data-i18n="importFileSuccessHint">Os dados foram restaurados. Você pode fechar esta aba e abrir a extensão novamente.</p>
+        <button class="btn btn-primary" id="btn-close" data-i18n="importFileClose">Fechar</button>
+      </div>
+    </main>
+
+    <script type="module" src="src/import.js"></script>
+  </body>
+</html>

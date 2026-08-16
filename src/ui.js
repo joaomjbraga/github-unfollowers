@@ -419,7 +419,7 @@ export function updateStats(state) {
   $("count-not-following-back").textContent = nfbCount;
 }
 
-export function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals, notFollowingBack, whitelist, unfollowable, showUnfollowable }) {
+function getFilteredList({ activeTab, query, sortBy, unfollowers, mutuals, notFollowingBack, whitelist, unfollowable, showUnfollowable }) {
   let source = activeTab === "mutual"
     ? mutuals
     : activeTab === "not-following-back"
@@ -578,6 +578,21 @@ export function showConnectError(msg) {
   const el = $("connect-error");
   el.innerHTML = msg;
   el.classList.remove("hidden");
+}
+
+let toastTimer = null;
+
+export function showToast(msg, { type = "success", duration = 3000 } = {}) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.toggle("toast-success", type === "success");
+  el.classList.remove("hidden");
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.add("hidden");
+    toastTimer = null;
+  }, duration);
 }
 
 export function removeUserItem(login) {

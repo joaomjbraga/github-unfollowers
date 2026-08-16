@@ -8,7 +8,7 @@ import { getStorage, setStorage } from "./storage.js";
 const STORAGE_KEY = "theme_v1";
 
 /** @returns {Promise<"dark"|"light">} */
-export async function loadTheme() {
+async function loadTheme() {
   const saved = await getStorage(STORAGE_KEY);
   if (saved === "light" || saved === "dark") return saved;
   // Respeita a preferência do sistema como padrão

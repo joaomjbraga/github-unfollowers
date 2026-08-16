@@ -6,8 +6,7 @@ import { httpFriendlyMessage, sleep } from "./utils.js";
 import { mockFetch } from "./dev.js";
 import { t } from "./i18n.js";
 
-// Re-exporta helpers de storage para que app.js não precise importar dois módulos
-export { getStorage, setStorage, setStorageMulti, removeStorage } from "./storage.js";
+// Re-exporta helpers de cache
 export { loadFromStorage as initCache, saveToStorage as persistCache, clear as clearCache } from "./cache.js";
 
 // ---------------------------------------------------------------------------

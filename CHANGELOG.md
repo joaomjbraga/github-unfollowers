@@ -6,6 +6,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/) e conve
 
 ---
 
+## [1.5.1] - 2026-08-16
+
+### Adicionado
+
+- **Página dedicada de importação** (`import.html`) — nova página em aba separada para importar dados JSON, resolvendo o bug do Chrome no Linux que fechava o popup ao abrir o seletor de arquivos. Inclui stepper visual de 3 passos (Arquivo → Confirmar → Concluído), drag-and-drop, file picker e feedback visual com animação.
+
+### Corrigido
+
+- **Popup fechava ao importar (Linux)** — `input type="file"` e `showOpenFilePicker()` fechavam o popup no Linux. Solução: importação agora acontece em `import.html`, aberto via `chrome.tabs.create`.
+- **z-index do modal de confirmação** — `.modal-overlay` ficava atrás do painel de import com z-index 100. Agora usa 400; toast usa 500.
+- **`initI18n()` crashava no service worker** — `document.documentElement.lang` era chamado sem verificação de DOM. Adicionado guarda `typeof document !== "undefined"`.
+
+### Removido
+
+- **Painel de importação do popup** — `#import-panel` inteiro removido do `popup.html`, junto com ~48 linhas de funções em `app.js` (`openImportPanel`, `closeImportPanel`, `handleImportData`, `handleImportFromDropzone`) e ~40 linhas de estilos em `popup.css`.
+- **Código morto em módulos** — re-exports desnecessários em `api.js` (4), `export` desnecessário em `theme.js` e `ui.js`.
+- **7 chaves i18n** × 16 locales (112 linhas) — `importTitle`, `importDropZone`, `importDropZoneHint`, `importTextareaPlaceholder`, `importEmpty`, `importFileBtn`, `importFileTabHint`.
+
+---
+
 ## [1.5.0] - 2026-07-30
 
 ### Adicionado
